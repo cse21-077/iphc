@@ -1,19 +1,23 @@
 import React, { useState } from 'react';
 import { MemberProfile } from '../types';
+import { BRANCH_REGION_GROUPS } from '../data/branches';
 import {
   ArrowRight,
-  Check,
-  CheckCircle2,
-  ChevronRight,
   Camera,
   Search,
-  ShieldCheck,
-  Smartphone,
   UserCheck,
   Building2,
   X,
-  LogOut,
   User,
+  Mail,
+  MapPin,
+  BookOpen,
+  GraduationCap,
+  Users,
+  Heart,
+  Plus,
+  Trash2,
+  ChevronDown,
 } from 'lucide-react';
 
 interface RegistrationAuthModalProps {
@@ -24,25 +28,44 @@ interface RegistrationAuthModalProps {
   currentMember: MemberProfile;
 }
 
-const CHURCH_BRANCHES = [
-  'Zuurbekom Headquarters (Silo)',
-  'Gaborone Branch',
-  'Polokwane Central',
-  'Soweto Meadowlands',
-  'Pretoria West',
-  'Rustenburg Silo',
-  'Mamelodi Branch',
-  'Bloemfontein Central',
-  'Nelspruit Branch',
-  'Durban Central',
-  'East London Branch',
-  'Capetown Silo',
-  'Francistown Branch (Botswana)',
-  'Windhoek Branch (Namibia)',
-  'Harare Central (Zimbabwe)',
-  'Bulawayo Branch (Zimbabwe)',
-  'Maseru Central (Lesotho)',
+interface CountryDial {
+  name: string;
+  dial: string;
+  flag: string;
+}
+
+const COUNTRY_DIALS: CountryDial[] = [
+  { name: 'South Africa', dial: '+27', flag: '🇿🇦' },
+  { name: 'Botswana', dial: '+267', flag: '🇧🇼' },
+  { name: 'Lesotho', dial: '+266', flag: '🇱🇸' },
+  { name: 'Namibia', dial: '+264', flag: '🇳🇦' },
+  { name: 'Zimbabwe', dial: '+263', flag: '🇿🇼' },
+  { name: 'Mozambique', dial: '+258', flag: '🇲🇿' },
+  { name: 'Eswatini', dial: '+268', flag: '🇸🇿' },
+  { name: 'Zambia', dial: '+260', flag: '🇿🇲' },
 ];
+
+const SECTION_OPTIONS = [
+  'General Membership',
+  'Section 1',
+  'Section 2',
+  'Section 3',
+  'Section 4 — Baruti & Banna',
+  'Section 5',
+  'Section 6',
+  'Section 7',
+];
+
+const MARRIAGE_OPTIONS = ['Single', 'Married', 'Divorced', 'Widowed'];
+
+const KIN_RELATIONS = ['Spouse', 'Parent', 'Child', 'Sibling', 'Grandparent', 'Other Relative'];
+
+const inputClass =
+  'w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-[#181D20]';
+const labelClass =
+  'text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1';
+const subHeadingClass =
+  'text-[11px] font-black text-slate-900 uppercase tracking-widest pt-1 flex items-center gap-1.5';
 
 export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
   isOpen,
@@ -59,18 +82,43 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
   const [titlePrefix, setTitlePrefix] = useState<'Ntate' | 'Mme' | 'Rre'>('Ntate');
   const [fullName, setFullName] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
-  const [branchSearch, setBranchSearch] = useState('');
   const [selectedBranch, setSelectedBranch] = useState('');
+
+  // Country code picker state
+  const [dialCode, setDialCode] = useState('+27');
+  const [localNumber, setLocalNumber] = useState('');
+  const [countryPickerOpen, setCountryPickerOpen] = useState(false);
+  const [countrySearch, setCountrySearch] = useState('');
+
+  // Proposed Member Information fields
+  const [age, setAge] = useState('');
+  const [biography, setBiography] = useState('');
+  const [qualifications, setQualifications] = useState('');
+  const [section, setSection] = useState('General Membership');
+  const [email, setEmail] = useState('');
+  const [physicalAddress, setPhysicalAddress] = useState('');
+  const [postalAddress, setPostalAddress] = useState('');
+  const [marriageStatus, setMarriageStatus] = useState('Single');
+  const [kinName, setKinName] = useState('');
+  const [kinRelation, setKinRelation] = useState('Spouse');
+  const [kinPhone, setKinPhone] = useState('');
+  const [familyMembers, setFamilyMembers] = useState<Array<{ name: string; relation: string }>>([]);
 
   // Direct login state
   const [loginPhoneInput, setLoginPhoneInput] = useState('+27 82 459 1083');
   const [loginError, setLoginError] = useState('');
 
-  if (!isOpen) return null;
+  const fullPhone = `${dialCode} ${localNumber}`.trim();
+  const selectedCountry = COUNTRY_DIALS.find((c) => c.dial === dialCode) ?? COUNTRY_DIALS[0];
+  const filteredCountries = countrySearch.trim()
+    ? COUNTRY_DIALS.filter(
+        (c) =>
+          c.name.toLowerCase().includes(countrySearch.toLowerCase()) ||
+          c.dial.includes(countrySearch.trim())
+      )
+    : COUNTRY_DIALS;
 
-  const filteredBranches = branchSearch.trim()
-    ? CHURCH_BRANCHES.filter((b) => b.toLowerCase().includes(branchSearch.toLowerCase()))
-    : [];
+  if (!isOpen) return null;
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -85,7 +133,8 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
 
   const handleSendCode = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!phone.trim()) return;
+    if (!localNumber.trim()) return;
+    setPhone(fullPhone);
     setOtpCode('7492'); // Pre-fill mock OTP
     setMode('otp');
   };
@@ -95,31 +144,42 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
     setMode('about');
   };
 
+  const updateFamilyMember = (index: number, field: 'name' | 'relation', value: string) => {
+    setFamilyMembers((prev) => prev.map((m, i) => (i === index ? { ...m, [field]: value } : m)));
+  };
+
   const handleCompleteRegistration = () => {
     const randomId = Math.floor(100000 + Math.random() * 900000);
-    const finalBranch = selectedBranch || 'Zuurbekom Headquarters (Silo)';
+    const finalBranch = selectedBranch || 'Silo';
+    const finalPhone = phone || fullPhone || '+27 80 000 0000';
     const newMember: MemberProfile = {
       id: `mem_new_${Date.now()}`,
       name: fullName.trim() || 'New Church Member',
       title: titlePrefix,
       membershipNumber: `IPHC-MM-${randomId}`,
       branch: finalBranch,
-      section: 'General Membership',
+      section,
       baptismNumber: `PENDING-${randomId}`,
       photo:
         photoUrl.trim() ||
         'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300&auto=format&fit=crop&q=80',
-      phone: phone || '+27 80 000 0000',
-      email: `${fullName.toLowerCase().replace(/\s+/g, '.')}@member.iphc.org`,
-      address: `Branch Member, ${finalBranch}`,
+      phone: finalPhone,
+      email: email.trim() || `${fullName.toLowerCase().replace(/\s+/g, '.') || 'member'}@member.iphc.org`,
+      address: physicalAddress.trim() || `Branch Member, ${finalBranch}`,
+      postalAddress: postalAddress.trim() || undefined,
+      age: age.trim() ? parseInt(age, 10) : undefined,
+      biography: biography.trim() || undefined,
+      qualifications: qualifications.trim() || undefined,
       nextOfKin: {
-        name: 'To be updated',
-        relation: 'Family',
-        phone: '+27 80 000 0000',
+        name: kinName.trim() || 'To be updated',
+        relation: kinRelation,
+        phone: kinPhone.trim() || finalPhone,
       },
-      marriageStatus: 'Single',
-      familyMembers: [],
-      joinYear: 2026,
+      marriageStatus,
+      familyMembers: familyMembers
+        .filter((m) => m.name.trim())
+        .map((m, i) => ({ id: `fam_new_${i + 1}`, name: m.name.trim(), relation: m.relation.trim() || 'Family' })),
+      joinYear: new Date().getFullYear(),
       qrToken: `IPHC-PENDING-${randomId}-${finalBranch.toUpperCase().slice(0, 4)}`,
       isPending: true,
     };
@@ -139,13 +199,72 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
     }
   };
 
+  const CountryPicker = ({ idPrefix }: { idPrefix: string }) => (
+    <div className="relative shrink-0">
+      <button
+        type="button"
+        onClick={() => {
+          setCountryPickerOpen(!countryPickerOpen);
+          setCountrySearch('');
+        }}
+        className="h-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 flex items-center gap-1.5 hover:bg-slate-100 transition focus:outline-hidden focus:ring-2 focus:ring-[#181D20]"
+        aria-label="Select country code"
+      >
+        <span className="text-base leading-none">{selectedCountry.flag}</span>
+        <span className="font-mono">{dialCode}</span>
+        <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+      </button>
+
+      {countryPickerOpen && (
+        <div className="absolute left-0 top-full mt-1 w-60 bg-white border border-slate-200 rounded-2xl shadow-xl z-20 overflow-hidden animate-in fade-in duration-100">
+          <div className="p-2 border-b border-slate-100">
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              <input
+                id={`${idPrefix}-country-search`}
+                type="text"
+                autoFocus
+                value={countrySearch}
+                onChange={(e) => setCountrySearch(e.target.value)}
+                placeholder="Search country or code"
+                className="w-full pl-7 pr-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-[#181D20]"
+              />
+            </div>
+          </div>
+          <div className="max-h-48 overflow-y-auto">
+            {filteredCountries.map((c) => (
+              <button
+                key={c.dial}
+                type="button"
+                onClick={() => {
+                  setDialCode(c.dial);
+                  setCountryPickerOpen(false);
+                }}
+                className={`w-full px-3 py-2 text-left text-xs font-semibold flex items-center gap-2.5 transition ${
+                  c.dial === dialCode ? 'bg-slate-900 text-white' : 'text-slate-700 hover:bg-slate-100'
+                }`}
+              >
+                <span className="text-base leading-none">{c.flag}</span>
+                <span className="flex-1">{c.name}</span>
+                <span className={`font-mono ${c.dial === dialCode ? 'text-white' : 'text-slate-400'}`}>{c.dial}</span>
+              </button>
+            ))}
+            {filteredCountries.length === 0 && (
+              <div className="p-3 text-xs text-slate-400 text-center">No countries match "{countrySearch}"</div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/75 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-200">
       <div className="w-full max-w-md bg-white rounded-t-[32px] sm:rounded-[32px] p-6 shadow-2xl max-h-[92vh] flex flex-col relative overflow-hidden">
         {/* Top Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-5 right-5 p-2 rounded-full text-slate-400 hover:text-slate-700 transition"
+          className="absolute top-5 right-5 p-2 rounded-full text-slate-400 hover:text-slate-700 transition z-10"
           aria-label="Close"
         >
           <X className="w-5 h-5" />
@@ -202,17 +321,18 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
 
             <form onSubmit={handleSendCode} className="space-y-4 pt-2">
               <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                  Mobile Number *
-                </label>
-                <input
-                  type="tel"
-                  required
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+27 82 000 0000"
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-base font-mono font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-[#181D20]"
-                />
+                <label className={labelClass}>Mobile Number *</label>
+                <div className="flex gap-2">
+                  <CountryPicker idPrefix="reg" />
+                  <input
+                    type="tel"
+                    required
+                    value={localNumber}
+                    onChange={(e) => setLocalNumber(e.target.value)}
+                    placeholder="82 000 0000"
+                    className="flex-1 min-w-0 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-base font-mono font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-[#181D20]"
+                  />
+                </div>
               </div>
 
               <button
@@ -262,27 +382,29 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
           </div>
         )}
 
-        {/* SCREEN 3: About You */}
+        {/* SCREEN 3: Member Information */}
         {mode === 'about' && (
           <div className="py-2 space-y-4 animate-in fade-in duration-150 flex-1 overflow-y-auto pr-1">
             <div className="flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-widest">
               <span>Step 2 of 3</span>
-              <span>About You</span>
+              <span>Member Information</span>
             </div>
 
             <div>
-              <h2 className="text-xl font-black text-[#181D20]">About You</h2>
+              <h2 className="text-xl font-black text-[#181D20]">Member Information</h2>
               <p className="text-xs text-slate-500 mt-0.5">
-                Enter your name and select your home church branch.
+                Provide your details as they should appear on your membership record.
               </p>
             </div>
 
             <div className="space-y-3.5 text-xs">
-              {/* Title / Honorific Prefix */}
+              {/* Personal Details */}
+              <h3 className={subHeadingClass}>
+                <User className="w-3.5 h-3.5" /> Personal Details
+              </h3>
+
               <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">
-                  Honorific Title *
-                </label>
+                <label className={labelClass}>Honorific Title *</label>
                 <div className="grid grid-cols-3 gap-2">
                   {(['Ntate', 'Mme', 'Rre'] as const).map((pref) => (
                     <button
@@ -301,26 +423,50 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
                 </div>
               </div>
 
-              {/* Full Name */}
               <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                  Full Name *
-                </label>
+                <label className={labelClass}>Full Name *</label>
                 <input
                   type="text"
                   required
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="e.g. Masego Tau"
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-[#181D20]"
+                  className={inputClass}
                 />
               </div>
 
-              {/* Photo option via direct file upload */}
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className={labelClass}>Age</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={120}
+                    value={age}
+                    onChange={(e) => setAge(e.target.value)}
+                    placeholder="e.g. 34"
+                    className={inputClass}
+                  />
+                </div>
+                <div>
+                  <label className={labelClass}>Marriage Status</label>
+                  <select
+                    value={marriageStatus}
+                    onChange={(e) => setMarriageStatus(e.target.value)}
+                    className={inputClass}
+                  >
+                    {MARRIAGE_OPTIONS.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Profile Picture */}
               <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                  Profile Photo (Optional Upload)
-                </label>
+                <label className={labelClass}>Profile Picture (Optional Upload)</label>
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-full bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center">
                     {photoUrl ? (
@@ -344,49 +490,203 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
                 </div>
               </div>
 
-              {/* Searchable Branch Selector - options only visible when typing search */}
+              {/* Background */}
+              <h3 className={subHeadingClass}>
+                <BookOpen className="w-3.5 h-3.5" /> Biography & Qualifications
+              </h3>
+
               <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                  Home Branch * {selectedBranch && <span className="text-slate-900 font-extrabold">({selectedBranch})</span>}
-                </label>
-                <div className="relative mb-1">
-                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <label className={labelClass}>Biography</label>
+                <textarea
+                  value={biography}
+                  onChange={(e) => setBiography(e.target.value)}
+                  placeholder="A short introduction about yourself, your faith journey, and service in the church..."
+                  rows={3}
+                  className={`${inputClass} resize-none`}
+                />
+              </div>
+
+              <div>
+                <label className={labelClass}>Qualifications (Education Background)</label>
+                <textarea
+                  value={qualifications}
+                  onChange={(e) => setQualifications(e.target.value)}
+                  placeholder="e.g. Diploma in Education, University of Limpopo (2015)"
+                  rows={2}
+                  className={`${inputClass} resize-none`}
+                />
+              </div>
+
+              {/* Church */}
+              <h3 className={subHeadingClass}>
+                <Building2 className="w-3.5 h-3.5" /> Church Details
+              </h3>
+
+              <div className="grid grid-cols-2 gap-2.5">
+                <div>
+                  <label className={labelClass}>Section</label>
+                  <select
+                    value={section}
+                    onChange={(e) => setSection(e.target.value)}
+                    className={inputClass}
+                  >
+                    {SECTION_OPTIONS.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className={labelClass}>Branch *</label>
+                  <select
+                    required
+                    value={selectedBranch}
+                    onChange={(e) => setSelectedBranch(e.target.value)}
+                    className={inputClass}
+                  >
+                    <option value="" disabled>
+                      Select branch...
+                    </option>
+                    {BRANCH_REGION_GROUPS.map((group) => (
+                      <optgroup key={group.region} label={group.region}>
+                        {group.branches.map((b) => (
+                          <option key={`${group.region}-${b}`} value={b}>
+                            {b}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Contact */}
+              <h3 className={subHeadingClass}>
+                <Mail className="w-3.5 h-3.5" /> Contact Details
+              </h3>
+
+              <div>
+                <label className={labelClass}>Email Address</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="e.g. masego.tau@gmail.com"
+                  className={inputClass}
+                />
+              </div>
+
+              <div>
+                <label className={labelClass}>Physical Address</label>
+                <textarea
+                  value={physicalAddress}
+                  onChange={(e) => setPhysicalAddress(e.target.value)}
+                  placeholder="Stand / Street, Town, Province / District"
+                  rows={2}
+                  className={`${inputClass} resize-none`}
+                />
+              </div>
+
+              <div>
+                <label className={labelClass}>Postal Address</label>
+                <input
+                  type="text"
+                  value={postalAddress}
+                  onChange={(e) => setPostalAddress(e.target.value)}
+                  placeholder="P.O. Box, Town, Postal Code"
+                  className={inputClass}
+                />
+              </div>
+
+              {/* Family */}
+              <h3 className={subHeadingClass}>
+                <Heart className="w-3.5 h-3.5" /> Next of Kin & Family Members
+              </h3>
+
+              <div className="p-3 rounded-2xl border border-slate-200 bg-slate-50/60 space-y-2.5">
+                <div>
+                  <label className={labelClass}>Next of Kin — Full Name</label>
                   <input
                     type="text"
-                    value={branchSearch}
-                    onChange={(e) => setBranchSearch(e.target.value)}
-                    placeholder="Search branch name e.g. Gaborone..."
-                    className="w-full pl-8 pr-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-[#181D20]"
+                    value={kinName}
+                    onChange={(e) => setKinName(e.target.value)}
+                    placeholder="e.g. Mme Kea Tau"
+                    className={inputClass}
                   />
                 </div>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div>
+                    <label className={labelClass}>Relation</label>
+                    <select
+                      value={kinRelation}
+                      onChange={(e) => setKinRelation(e.target.value)}
+                      className={inputClass}
+                    >
+                      {KIN_RELATIONS.map((r) => (
+                        <option key={r} value={r}>
+                          {r}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className={labelClass}>Next of Kin Phone</label>
+                    <input
+                      type="tel"
+                      value={kinPhone}
+                      onChange={(e) => setKinPhone(e.target.value)}
+                      placeholder="+27 83 000 0000"
+                      className={inputClass}
+                    />
+                  </div>
+                </div>
+              </div>
 
-                {/* Only render list if user has entered search query */}
-                {branchSearch.trim().length > 0 && (
-                  <div className="max-h-36 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100 bg-white shadow-lg animate-in fade-in duration-100 mt-1">
-                    {filteredBranches.length > 0 ? (
-                      filteredBranches.map((b) => (
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className={`${labelClass} mb-0`}>Family Members (If Applicable)</label>
+                  <button
+                    type="button"
+                    onClick={() => setFamilyMembers((prev) => [...prev, { name: '', relation: '' }])}
+                    className="flex items-center gap-1 text-[10px] font-extrabold text-slate-900 bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded-full transition active:scale-95"
+                  >
+                    <Plus className="w-3 h-3" /> Add Member
+                  </button>
+                </div>
+
+                {familyMembers.length === 0 ? (
+                  <p className="text-[11px] text-slate-400 font-medium px-1">
+                    No family members added. Use "Add Member" to register household members.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {familyMembers.map((member, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={member.name}
+                          onChange={(e) => updateFamilyMember(idx, 'name', e.target.value)}
+                          placeholder="Full name"
+                          className={`${inputClass} flex-1 min-w-0`}
+                        />
+                        <input
+                          type="text"
+                          value={member.relation}
+                          onChange={(e) => updateFamilyMember(idx, 'relation', e.target.value)}
+                          placeholder="e.g. Spouse, Son (12)"
+                          className={`${inputClass} w-28 shrink-0`}
+                        />
                         <button
-                          key={b}
                           type="button"
-                          onClick={() => {
-                            setSelectedBranch(b);
-                            setBranchSearch('');
-                          }}
-                          className={`w-full px-3 py-2 text-left text-xs font-semibold flex items-center justify-between transition ${
-                            selectedBranch === b
-                              ? 'bg-slate-900 text-white'
-                              : 'text-slate-700 hover:bg-slate-100'
-                          }`}
+                          onClick={() => setFamilyMembers((prev) => prev.filter((_, i) => i !== idx))}
+                          className="p-2 rounded-xl text-red-500 hover:bg-red-50 transition shrink-0"
+                          aria-label="Remove family member"
                         >
-                          <span>{b}</span>
-                          {selectedBranch === b && <Check className="w-3.5 h-3.5 text-white" />}
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
-                      ))
-                    ) : (
-                      <div className="p-3 text-xs text-slate-400 text-center">
-                        No branches match "{branchSearch}"
                       </div>
-                    )}
+                    ))}
                   </div>
                 )}
               </div>
@@ -405,7 +705,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
 
         {/* SCREEN 4: Review */}
         {mode === 'review' && (
-          <div className="py-3 space-y-4 animate-in fade-in duration-150">
+          <div className="py-3 space-y-4 animate-in fade-in duration-150 flex-1 overflow-y-auto pr-1">
             <div className="flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-widest">
               <span>Step 3 of 3</span>
               <span>Review</span>
@@ -430,16 +730,60 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
                     className="w-full h-full object-cover"
                   />
                 </div>
-                <div>
-                  <h4 className="font-extrabold text-sm text-slate-900">{fullName}</h4>
-                  <p className="text-slate-500 font-mono font-bold mt-0.5">{phone}</p>
+                <div className="min-w-0">
+                  <h4 className="font-extrabold text-sm text-slate-900">
+                    {titlePrefix} {fullName}
+                  </h4>
+                  <p className="text-slate-500 font-mono font-bold mt-0.5">{phone || fullPhone}</p>
                 </div>
               </div>
 
-              <div className="pt-2 border-t border-slate-200/60 flex justify-between">
-                <span className="text-slate-400 font-bold uppercase text-[10px]">Home Branch:</span>
-                <span className="font-bold text-slate-900">{selectedBranch}</span>
+              <div className="pt-2 border-t border-slate-200/60 space-y-2">
+                {[
+                  ['Age', age ? `${age} years` : '—'],
+                  ['Marriage Status', marriageStatus],
+                  ['Section', section],
+                  ['Branch', selectedBranch || 'Silo'],
+                  ['Email', email || '—'],
+                  ['Physical Address', physicalAddress || '—'],
+                  ['Postal Address', postalAddress || '—'],
+                  ['Qualifications', qualifications || '—'],
+                  ['Next of Kin', kinName ? `${kinName} (${kinRelation})` : '—'],
+                  ['Next of Kin Phone', kinPhone || '—'],
+                ].map(([k, v]) => (
+                  <div key={k} className="flex justify-between gap-3">
+                    <span className="text-slate-400 font-bold uppercase text-[10px] shrink-0">{k}:</span>
+                    <span className="font-bold text-slate-900 text-right break-words min-w-0">{v}</span>
+                  </div>
+                ))}
               </div>
+
+              {biography.trim() && (
+                <div className="pt-2 border-t border-slate-200/60">
+                  <span className="text-slate-400 font-bold uppercase text-[10px] block mb-0.5">Biography:</span>
+                  <p className="font-semibold text-slate-800 leading-snug">{biography}</p>
+                </div>
+              )}
+
+              {familyMembers.some((m) => m.name.trim()) && (
+                <div className="pt-2 border-t border-slate-200/60">
+                  <span className="text-slate-400 font-bold uppercase text-[10px] block mb-1">
+                    Family Members ({familyMembers.filter((m) => m.name.trim()).length}):
+                  </span>
+                  <ul className="space-y-1">
+                    {familyMembers
+                      .filter((m) => m.name.trim())
+                      .map((m, i) => (
+                        <li key={i} className="font-bold text-slate-900 flex items-center gap-1.5">
+                          <Users className="w-3 h-3 text-slate-400 shrink-0" />
+                          <span>
+                            {m.name} <span className="text-slate-500 font-semibold">— {m.relation || 'Family'}</span>
+                          </span>
+                        </li>
+                      ))}
+                  </ul>
+                </div>
+              )}
             </div>
 
             <button
@@ -461,7 +805,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
             <div>
               <h2 className="text-2xl font-black text-[#181D20]">You're almost in!</h2>
               <p className="text-xs text-slate-600 mt-2 leading-relaxed px-2">
-                <strong className="text-slate-900">{selectedBranch}</strong> will confirm your details, then your membership card will be ready. We'll let you know.
+                <strong className="text-slate-900">{selectedBranch || 'Silo'}</strong> will confirm your details, then your membership card will be ready. We'll let you know.
               </p>
             </div>
 
@@ -488,9 +832,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
 
             <form onSubmit={handleDirectLoginSubmit} className="space-y-4 pt-1">
               <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                  Registered Phone Number *
-                </label>
+                <label className={labelClass}>Registered Phone Number *</label>
                 <input
                   type="tel"
                   required

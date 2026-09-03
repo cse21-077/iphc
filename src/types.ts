@@ -10,6 +10,10 @@ export interface MemberProfile {
   phone: string;
   email: string;
   address: string;
+  postalAddress?: string;
+  age?: number;
+  biography?: string;
+  qualifications?: string;
   nextOfKin: {
     name: string;
     relation: string;

@@ -10,6 +10,8 @@ import {
   Mail,
   MapPin,
   Users,
+  BookOpen,
+  GraduationCap,
   X,
   ChevronDown,
   ChevronRight,
@@ -214,6 +216,16 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   <p className="font-semibold text-slate-900 leading-snug">{member.address}</p>
                 </div>
               </div>
+
+              {member.postalAddress && (
+                <div className="flex items-start gap-3 p-2.5 rounded-2xl bg-slate-50">
+                  <Mail className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase">Postal Address</p>
+                    <p className="font-semibold text-slate-900 leading-snug">{member.postalAddress}</p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -270,7 +282,60 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           )}
         </div>
 
-        {/* Accordion 3: Family & Next of Kin */}
+        {/* Accordion 3: About & Qualifications */}
+        <div className="bg-white rounded-[24px] border border-slate-200/90 shadow-xs overflow-hidden transition-all duration-200">
+          <button
+            onClick={() => toggleAccordion('about')}
+            className="w-full p-4 flex items-center justify-between text-left hover:bg-slate-50/80 transition"
+          >
+            <div className="flex items-center gap-2">
+              <BookOpen className="w-4 h-4 text-slate-700 shrink-0" />
+              <div>
+                <h3 className="text-sm font-bold text-[#181D20]">About & Qualifications</h3>
+                <p className="text-[11px] text-slate-400">Biography, education & personal details</p>
+              </div>
+            </div>
+            <div className={`p-1 rounded-full bg-slate-100 text-slate-500 transition-transform duration-200 ${openAccordion === 'about' ? 'rotate-180' : ''}`}>
+              <ChevronDown className="w-4 h-4" />
+            </div>
+          </button>
+
+          {openAccordion === 'about' && (
+            <div className="px-4 pb-4 pt-1 border-t border-slate-100 space-y-3 text-xs animate-in fade-in duration-150">
+              <div className="grid grid-cols-2 gap-2.5">
+                <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase">Age</p>
+                  <p className="font-bold text-slate-900 mt-0.5">{member.age ? `${member.age} years` : '—'}</p>
+                </div>
+
+                <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase">Marriage Status</p>
+                  <p className="font-bold text-slate-900 mt-0.5 truncate">{member.marriageStatus}</p>
+                </div>
+              </div>
+
+              {member.biography && (
+                <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1">
+                    <BookOpen className="w-3 h-3" /> Biography
+                  </p>
+                  <p className="font-semibold text-slate-800 leading-snug mt-1">{member.biography}</p>
+                </div>
+              )}
+
+              {member.qualifications && (
+                <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1">
+                    <GraduationCap className="w-3 h-3" /> Qualifications
+                  </p>
+                  <p className="font-semibold text-slate-800 leading-snug mt-1">{member.qualifications}</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Accordion 4: Family & Next of Kin */}
         <div className="bg-white rounded-[24px] border border-slate-200/90 shadow-xs overflow-hidden transition-all duration-200">
           <button
             onClick={() => toggleAccordion('family')}

@@ -247,7 +247,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             {/* Bottom Row: Broad Title & Subtitle */}
             <div className="relative z-10 min-w-0">
               <h4 className="text-sm font-black text-white leading-tight truncate">
-                Watch & Listen
+                Iphc Media
               </h4>
               <p className="text-xs text-slate-300 font-medium mt-0.5 truncate">
                 Latest sermons and music

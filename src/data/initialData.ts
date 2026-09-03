@@ -21,6 +21,11 @@ export const initialMemberProfile: MemberProfile = {
   phone: '+27 82 459 1083',
   email: 'tumelo.lekolwane@gmail.com',
   address: 'Stand 1420, Silo Zuurbekom, Westonaria, Gauteng',
+  postalAddress: 'P.O. Box 214, Westonaria, 1780',
+  age: 46,
+  biography:
+    'Born-again member of the International Pentecost Holiness Church, serving under Silo Zuurbekom. Committed to prayer, choir ministry, and supporting the growth of the church across all branches.',
+  qualifications: 'National Diploma in Electrical Engineering (Vaal University of Technology); Wireman’s Licence; Solar PV GreenCard Installation Certificate',
   nextOfKin: {
     name: 'Mme Mpho Lekolwane',
     relation: 'Spouse',
