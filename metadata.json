@@ -1,0 +1,6 @@
+{
+  "name": "IPHC MMUSO",
+  "description": "The official IPHC Member App for Ntate Tumelo Lekolwane and church members: digital membership card, self-service QR check-in, Silo ceremonies calendar, payments (Karolo), FLG Empire business directory, and media.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,270 @@
+import React, { useState, useEffect } from 'react';
+import {
+  MemberProfile,
+  Ceremony,
+  BusinessListing,
+  AttendanceRecord,
+  PaymentRecord,
+  AnnouncementNotification,
+} from './types';
+import {
+  initialMemberProfile,
+  initialCeremonies,
+  initialBusinesses,
+  initialAttendanceRecords,
+  initialPaymentRecords,
+  initialNotifications,
+  initialMediaItems,
+} from './data/initialData';
+import { BottomNav } from './components/BottomNav';
+import { HomeView } from './components/HomeView';
+import { ScanView } from './components/ScanView';
+import { AttendanceView } from './components/AttendanceView';
+import { CalendarView } from './components/CalendarView';
+import { MediaView } from './components/MediaView';
+import { FLGEmpireView } from './components/FLGEmpireView';
+import { PaymentsView } from './components/PaymentsView';
+import { ProfileView } from './components/ProfileView';
+import { NotificationsModal } from './components/NotificationsModal';
+import { MembershipCard } from './components/MembershipCard';
+
+export default function App() {
+  // Navigation State
+  const [activeTab, setActiveTab] = useState<'home' | 'calendar' | 'scan' | 'flg' | 'profile'>('home');
+
+  // Sub-screens state
+  const [isPaymentsOpen, setIsPaymentsOpen] = useState(false);
+  const [isAttendanceOpen, setIsAttendanceOpen] = useState(false);
+  const [isMediaOpen, setIsMediaOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isMembershipPassOpen, setIsMembershipPassOpen] = useState(false);
+  const [paymentsInitialCategory, setPaymentsInitialCategory] = useState<string | null>(null);
+
+  // Persistent Domain States with LocalStorage backup
+  const [member, setMember] = useState<MemberProfile>(() => {
+    const saved = localStorage.getItem('iphc_mmuso_member');
+    return saved ? JSON.parse(saved) : initialMemberProfile;
+  });
+
+  const [ceremonies, setCeremonies] = useState<Ceremony[]>(() => {
+    const saved = localStorage.getItem('iphc_mmuso_ceremonies');
+    return saved ? JSON.parse(saved) : initialCeremonies;
+  });
+
+  const [businesses, setBusinesses] = useState<BusinessListing[]>(() => {
+    const saved = localStorage.getItem('iphc_mmuso_businesses');
+    return saved ? JSON.parse(saved) : initialBusinesses;
+  });
+
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>(() => {
+    const saved = localStorage.getItem('iphc_mmuso_attendance');
+    return saved ? JSON.parse(saved) : initialAttendanceRecords;
+  });
+
+  const [paymentRecords, setPaymentRecords] = useState<PaymentRecord[]>(() => {
+    const saved = localStorage.getItem('iphc_mmuso_payments');
+    return saved ? JSON.parse(saved) : initialPaymentRecords;
+  });
+
+  const [notifications, setNotifications] = useState<AnnouncementNotification[]>(() => {
+    const saved = localStorage.getItem('iphc_mmuso_notifications');
+    return saved ? JSON.parse(saved) : initialNotifications;
+  });
+
+  // Save to local storage on changes
+  useEffect(() => {
+    localStorage.setItem('iphc_mmuso_member', JSON.stringify(member));
+  }, [member]);
+
+  useEffect(() => {
+    localStorage.setItem('iphc_mmuso_ceremonies', JSON.stringify(ceremonies));
+  }, [ceremonies]);
+
+  useEffect(() => {
+    localStorage.setItem('iphc_mmuso_businesses', JSON.stringify(businesses));
+  }, [businesses]);
+
+  useEffect(() => {
+    localStorage.setItem('iphc_mmuso_attendance', JSON.stringify(attendanceRecords));
+  }, [attendanceRecords]);
+
+  useEffect(() => {
+    localStorage.setItem('iphc_mmuso_payments', JSON.stringify(paymentRecords));
+  }, [paymentRecords]);
+
+  useEffect(() => {
+    localStorage.setItem('iphc_mmuso_notifications', JSON.stringify(notifications));
+  }, [notifications]);
+
+  // Handlers
+  const handleRecordAttendance = (newRecord: AttendanceRecord) => {
+    setAttendanceRecords((prev) => [newRecord, ...prev]);
+  };
+
+  const handleRecordPayment = (newRecord: PaymentRecord) => {
+    setPaymentRecords((prev) => [newRecord, ...prev]);
+  };
+
+  const handlePreRegisterCeremony = (ceremonyId: string, familyMembers: string[]) => {
+    setCeremonies((prev) =>
+      prev.map((c) =>
+        c.id === ceremonyId
+          ? {
+              ...c,
+              isRegistered: true,
+              registeredFamilyMembers: familyMembers,
+            }
+          : c
+      )
+    );
+  };
+
+  const handleAddOrUpdateBusiness = (listing: BusinessListing) => {
+    setBusinesses((prev) => {
+      const idx = prev.findIndex((b) => b.id === listing.id || b.isOwner);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = listing;
+        return next;
+      }
+      return [listing, ...prev];
+    });
+  };
+
+  const handleMarkAllNotificationsRead = () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+  };
+
+  const unreadNotificationsCount = notifications.filter((n) => !n.isRead).length;
+
+  const navigateToTab = (tab: 'home' | 'calendar' | 'scan' | 'flg' | 'profile') => {
+    setIsPaymentsOpen(false);
+    setIsAttendanceOpen(false);
+    setIsMediaOpen(false);
+    setActiveTab(tab);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const openPaymentsFlow = (category = 'karolo') => {
+    setPaymentsInitialCategory(category);
+    setIsPaymentsOpen(true);
+    setIsAttendanceOpen(false);
+    setIsMediaOpen(false);
+  };
+
+  return (
+    <div className="min-h-screen bg-[#F8F9FA] flex justify-center text-[#1A1A1A] selection:bg-[#3F76C5] selection:text-white">
+      {/* Mobile container constraint: standard responsive app frame */}
+      <div className="w-full max-w-md bg-white min-h-screen flex flex-col shadow-[0_24px_48px_rgba(0,0,0,0.08)] relative border-x border-gray-100">
+        {/* Content View Router */}
+        <main className="flex-1 overflow-y-auto bg-white">
+          {/* Sub-view: Payments */}
+          {isPaymentsOpen ? (
+            <PaymentsView
+              member={member}
+              paymentRecords={paymentRecords}
+              onRecordPayment={handleRecordPayment}
+              onBack={() => setIsPaymentsOpen(false)}
+              initialSelectedCategory={paymentsInitialCategory}
+            />
+          ) : isAttendanceOpen ? (
+            /* Sub-view: Attendance */
+            <AttendanceView
+              records={attendanceRecords}
+              onBack={() => setIsAttendanceOpen(false)}
+              onScanNow={() => {
+                setIsAttendanceOpen(false);
+                setActiveTab('scan');
+              }}
+            />
+          ) : isMediaOpen ? (
+            /* Sub-view: Media Sermons */
+            <MediaView
+              mediaItems={initialMediaItems}
+              onBack={() => setIsMediaOpen(false)}
+            />
+          ) : (
+            /* Main 5 Navigation Tabs */
+            <>
+              {activeTab === 'home' && (
+                <HomeView
+                  member={member}
+                  upcomingCeremony={ceremonies[0]}
+                  announcements={notifications}
+                  attendanceCount={attendanceRecords.length}
+                  onNavigateTab={navigateToTab}
+                  onOpenPayments={openPaymentsFlow}
+                  onOpenMedia={() => setIsMediaOpen(true)}
+                  onOpenNotifications={() => setIsNotificationsOpen(true)}
+                  onOpenCeremonyRegistration={() => navigateToTab('calendar')}
+                  onOpenMembershipPass={() => setIsMembershipPassOpen(true)}
+                />
+              )}
+
+              {activeTab === 'calendar' && (
+                <CalendarView
+                  ceremonies={ceremonies}
+                  member={member}
+                  onPreRegister={handlePreRegisterCeremony}
+                  onOpenCard={() => setIsMembershipPassOpen(true)}
+                />
+              )}
+
+              {activeTab === 'scan' && (
+                <ScanView
+                  member={member}
+                  onRecordAttendance={handleRecordAttendance}
+                  onBackToHome={() => navigateToTab('home')}
+                  onViewHistory={() => setIsAttendanceOpen(true)}
+                />
+              )}
+
+              {activeTab === 'flg' && (
+                <FLGEmpireView
+                  businesses={businesses}
+                  member={member}
+                  onAddOrUpdateBusiness={handleAddOrUpdateBusiness}
+                />
+              )}
+
+              {activeTab === 'profile' && (
+                <ProfileView
+                  member={member}
+                  onUpdateMember={setMember}
+                  onNavigateToPayments={() => openPaymentsFlow('karolo')}
+                  onNavigateToAttendance={() => setIsAttendanceOpen(true)}
+                  onOpenNotifications={() => setIsNotificationsOpen(true)}
+                  onOpenCard={() => setIsMembershipPassOpen(true)}
+                />
+              )}
+            </>
+          )}
+        </main>
+
+        {/* Global Rounded Modern Bottom Navigation */}
+        <BottomNav
+          activeTab={activeTab}
+          onChangeTab={navigateToTab}
+          onSelectTab={navigateToTab}
+        />
+
+        {/* Full-Screen Digital Pass Modal (Usher QR code & flip card) */}
+        {isMembershipPassOpen && (
+          <MembershipCard
+            member={member}
+            isExpanded={true}
+            onToggleExpand={() => setIsMembershipPassOpen(false)}
+          />
+        )}
+
+        {/* Notifications & Announcements Feed Modal */}
+        <NotificationsModal
+          notifications={notifications}
+          isOpen={isNotificationsOpen}
+          onClose={() => setIsNotificationsOpen(false)}
+          onMarkAllRead={handleMarkAllNotificationsRead}
+        />
+      </div>
+    </div>
+  );
+}
