@@ -27,6 +27,8 @@ import { PaymentsView } from './components/PaymentsView';
 import { ProfileView } from './components/ProfileView';
 import { NotificationsModal } from './components/NotificationsModal';
 import { MembershipCard } from './components/MembershipCard';
+import { RegistrationAuthModal } from './components/RegistrationAuthModal';
+import PWAInstallOverlay from './components/PWAInstallOverlay';
 
 export default function App() {
   // Navigation State
@@ -38,12 +40,26 @@ export default function App() {
   const [isMediaOpen, setIsMediaOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isMembershipPassOpen, setIsMembershipPassOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [paymentsInitialCategory, setPaymentsInitialCategory] = useState<string | null>(null);
 
   // Persistent Domain States with LocalStorage backup
   const [member, setMember] = useState<MemberProfile>(() => {
     const saved = localStorage.getItem('iphc_mmuso_member');
-    return saved ? JSON.parse(saved) : initialMemberProfile;
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Ensure photo points to public asset /tumelolekolwane.jpg for Tumelo
+      if (parsed.id === 'mem_001' || parsed.name.includes('Tumelo')) {
+        parsed.photo = '/tumelolekolwane.jpg';
+      }
+      return parsed;
+    }
+    return initialMemberProfile;
+  });
+
+  const [registeredMembersList, setRegisteredMembersList] = useState<MemberProfile[]>(() => {
+    const saved = localStorage.getItem('iphc_mmuso_all_members');
+    return saved ? JSON.parse(saved) : [initialMemberProfile];
   });
 
   const [ceremonies, setCeremonies] = useState<Ceremony[]>(() => {
@@ -77,6 +93,10 @@ export default function App() {
   }, [member]);
 
   useEffect(() => {
+    localStorage.setItem('iphc_mmuso_all_members', JSON.stringify(registeredMembersList));
+  }, [registeredMembersList]);
+
+  useEffect(() => {
     localStorage.setItem('iphc_mmuso_ceremonies', JSON.stringify(ceremonies));
   }, [ceremonies]);
 
@@ -95,6 +115,34 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('iphc_mmuso_notifications', JSON.stringify(notifications));
   }, [notifications]);
+
+  // Auth Handlers
+  const handleLoginWithPhone = (inputPhone: string): boolean => {
+    const cleaned = inputPhone.replace(/\s+/g, '');
+    const found = registeredMembersList.find((m) => m.phone.replace(/\s+/g, '') === cleaned);
+    if (found) {
+      setMember(found);
+      setActiveTab('home');
+      return true;
+    }
+    // Fallback search initial profile
+    if (initialMemberProfile.phone.replace(/\s+/g, '') === cleaned) {
+      setMember(initialMemberProfile);
+      setActiveTab('home');
+      return true;
+    }
+    return false;
+  };
+
+  const handleRegisterNewMember = (newMember: MemberProfile) => {
+    setRegisteredMembersList((prev) => [newMember, ...prev]);
+    setMember(newMember);
+    setActiveTab('home');
+  };
+
+  const handleSignOut = () => {
+    setIsAuthModalOpen(true);
+  };
 
   // Handlers
   const handleRecordAttendance = (newRecord: AttendanceRecord) => {
@@ -134,8 +182,6 @@ export default function App() {
   const handleMarkAllNotificationsRead = () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
   };
-
-  const unreadNotificationsCount = notifications.filter((n) => !n.isRead).length;
 
   const navigateToTab = (tab: 'home' | 'calendar' | 'scan' | 'flg' | 'profile') => {
     setIsPaymentsOpen(false);
@@ -235,6 +281,8 @@ export default function App() {
                   onNavigateToAttendance={() => setIsAttendanceOpen(true)}
                   onOpenNotifications={() => setIsNotificationsOpen(true)}
                   onOpenCard={() => setIsMembershipPassOpen(true)}
+                  onOpenAuthModal={() => setIsAuthModalOpen(true)}
+                  onSignOut={handleSignOut}
                 />
               )}
             </>
@@ -248,7 +296,7 @@ export default function App() {
           onSelectTab={navigateToTab}
         />
 
-        {/* Full-Screen Digital Pass Modal (Usher QR code & flip card) */}
+        {/* Full Screen Digital Pass Modal — Mounted ONLY when open */}
         {isMembershipPassOpen && (
           <MembershipCard
             member={member}
@@ -257,13 +305,24 @@ export default function App() {
           />
         )}
 
-        {/* Notifications & Announcements Feed Modal */}
+        {/* Announcements Modal */}
         <NotificationsModal
           notifications={notifications}
           isOpen={isNotificationsOpen}
           onClose={() => setIsNotificationsOpen(false)}
           onMarkAllRead={handleMarkAllNotificationsRead}
         />
+
+        {/* 5-Screen Registration & Auth Modal */}
+        <RegistrationAuthModal
+          isOpen={isAuthModalOpen}
+          onClose={() => setIsAuthModalOpen(false)}
+          onLogin={handleLoginWithPhone}
+          onRegisterComplete={handleRegisterNewMember}
+          currentMember={member}
+        />
+        {/* PWA Install Overlay: blocks web view until app is installed */}
+        <PWAInstallOverlay />
       </div>
     </div>
   );

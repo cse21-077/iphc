@@ -23,6 +23,7 @@ export interface MemberProfile {
   }>;
   joinYear: number;
   qrToken: string;
+  isPending?: boolean;
 }
 
 export interface AttendanceRecord {

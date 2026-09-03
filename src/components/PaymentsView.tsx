@@ -110,55 +110,53 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({
   };
 
   return (
-    <div className="min-h-[calc(100vh-8rem)] flex flex-col pb-28 max-w-md mx-auto">
+    <div className="min-h-[calc(100vh-8rem)] flex flex-col pb-28 max-w-md mx-auto space-y-4 px-4 pt-3">
       {/* Top Header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-white border-b border-slate-100">
+      <div className="flex items-center justify-between pt-2 pb-1">
         <button
           onClick={onBack}
-          className="flex items-center gap-1 text-slate-600 hover:text-slate-900 text-sm font-semibold p-1"
+          className="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-black p-1.5 rounded-full bg-slate-100 transition active:scale-95"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Back</span>
         </button>
 
-        <h2 className="text-base font-bold text-slate-900">Church Contributions</h2>
+        <h2 className="text-lg font-black text-[#181D20] tracking-tight">Church Giving</h2>
 
-        <div className="w-12" />
+        <div className="w-16" />
       </div>
 
-      {/* Tabs: Contribute vs History */}
-      <div className="p-4 bg-slate-50 border-b border-slate-200/60">
-        <div className="flex rounded-2xl bg-white p-1 border border-slate-200/80 shadow-xs">
-          <button
-            onClick={() => setActiveTab('contribute')}
-            className={`flex-1 py-2 rounded-xl text-xs font-bold transition ${
-              activeTab === 'contribute'
-                ? 'bg-[#D13138] text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Pay with Card (Give)
-          </button>
-          <button
-            onClick={() => setActiveTab('history')}
-            className={`flex-1 py-2 rounded-xl text-xs font-bold transition ${
-              activeTab === 'history'
-                ? 'bg-[#3F76C5] text-white shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Receipts History ({paymentRecords.length})
-          </button>
-        </div>
+      {/* Segmented Control Tabs */}
+      <div className="p-1 rounded-2xl bg-slate-100 border border-slate-200/60 shadow-xs flex">
+        <button
+          onClick={() => setActiveTab('contribute')}
+          className={`flex-1 py-2.5 rounded-xl text-xs font-extrabold transition-all duration-150 ${
+            activeTab === 'contribute'
+              ? 'bg-[#181D20] text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          Card Giving
+        </button>
+        <button
+          onClick={() => setActiveTab('history')}
+          className={`flex-1 py-2.5 rounded-xl text-xs font-extrabold transition-all duration-150 ${
+            activeTab === 'history'
+              ? 'bg-[#181D20] text-white shadow-xs'
+              : 'text-slate-600 hover:text-slate-900'
+          }`}
+        >
+          Receipts ({paymentRecords.length})
+        </button>
       </div>
 
       {activeTab === 'contribute' ? (
-        <div className="p-4 space-y-4 flex-1">
-          {/* Category Selector Cards */}
-          <div>
-            <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
-              1. Select Approved Category:
-            </label>
+        <div className="space-y-4 flex-1">
+          {/* Category Selector Grid */}
+          <div className="bg-white rounded-[26px] p-4 border border-slate-200/90 shadow-xs space-y-3">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
+              1. Select Giving Category
+            </span>
             <div className="grid grid-cols-2 gap-2.5">
               {paymentCategories.map((cat) => {
                 const isSelected = selectedCategory.id === cat.id;
@@ -166,20 +164,26 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({
                   <button
                     key={cat.id}
                     onClick={() => setSelectedCategory(cat)}
-                    className={`p-3.5 rounded-2xl text-left border transition-all duration-150 flex flex-col justify-between relative overflow-hidden active:scale-[0.98] ${
+                    className={`p-3.5 rounded-[20px] text-left border transition-all duration-150 flex flex-col justify-between active:scale-[0.98] ${
                       isSelected
-                        ? 'border-[#D13138] bg-white ring-2 ring-[#D13138] shadow-xs'
-                        : 'border-gray-200 bg-white hover:border-gray-300'
+                        ? 'border-[#181D20] bg-slate-900 text-white ring-1 ring-[#181D20] shadow-md'
+                        : 'border-slate-200/80 bg-slate-50/50 hover:bg-slate-100/60 text-slate-900'
                     }`}
                   >
                     <div>
-                      {getCategoryIcon(cat.id)}
+                      {cat.id === 'karolo' && <Wallet className={`w-5 h-5 ${isSelected ? 'text-white' : 'text-slate-700'}`} />}
+                      {cat.id === 'polokano' && <ShieldCheck className={`w-5 h-5 ${isSelected ? 'text-white' : 'text-slate-700'}`} />}
+                      {cat.id === 'monthends' && <CalendarCheck className={`w-5 h-5 ${isSelected ? 'text-white' : 'text-slate-700'}`} />}
+                      {cat.id === 'sethephu' && <Sparkles className={`w-5 h-5 ${isSelected ? 'text-white' : 'text-slate-700'}`} />}
+                      {cat.id !== 'karolo' && cat.id !== 'polokano' && cat.id !== 'monthends' && cat.id !== 'sethephu' && (
+                        <Building2 className={`w-5 h-5 ${isSelected ? 'text-white' : 'text-slate-700'}`} />
+                      )}
                     </div>
                     <div className="mt-3">
-                      <h4 className="font-extrabold text-xs text-[#1A1A1A] leading-tight">
+                      <h4 className="font-extrabold text-xs leading-tight">
                         {cat.name.split(' (')[0]}
                       </h4>
-                      <p className="text-[10px] text-[#6B7280] italic mt-0.5 truncate font-medium">
+                      <p className={`text-[10px] italic mt-0.5 truncate font-medium ${isSelected ? 'text-slate-300' : 'text-slate-500'}`}>
                         {cat.sesothoName}
                       </p>
                     </div>
@@ -187,32 +191,32 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({
                 );
               })}
             </div>
-          </div>
 
-          {/* Selected Category Explainer */}
-          <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs text-slate-600">
-            <span className="font-bold text-slate-900 block">{selectedCategory.name}</span>
-            <p className="mt-0.5 text-slate-500 leading-relaxed text-[11px]">
-              {selectedCategory.description}
-            </p>
+            {/* Selected Category Explainer */}
+            <div className="p-3 rounded-2xl bg-slate-50 border border-slate-100 text-xs text-slate-600">
+              <span className="font-bold text-slate-900 block">{selectedCategory.name}</span>
+              <p className="mt-0.5 text-slate-500 leading-relaxed text-[11px]">
+                {selectedCategory.description}
+              </p>
+            </div>
           </div>
 
           {/* Amount Selection */}
-          <div>
-            <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
-              2. Choose or Enter Amount (ZAR):
-            </label>
+          <div className="bg-white rounded-[26px] p-4 border border-slate-200/90 shadow-xs space-y-3">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
+              2. Choose or Enter Amount (ZAR)
+            </span>
 
             {/* Quick Amount Pills */}
-            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 mb-2.5">
+            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
               {selectedCategory.suggestedAmounts.map((amt) => (
                 <button
                   key={amt}
                   onClick={() => setCustomAmount(amt.toString())}
-                  className={`px-3.5 py-2 rounded-xl text-xs font-bold shrink-0 transition ${
+                  className={`px-4 py-2 rounded-full text-xs font-bold shrink-0 transition active:scale-95 ${
                     customAmount === amt.toString()
-                      ? 'bg-[#3F76C5] text-white shadow-xs'
-                      : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
+                      ? 'bg-[#181D20] text-white shadow-xs'
+                      : 'bg-slate-100 border border-slate-200/80 text-slate-700 hover:bg-slate-200/60'
                   }`}
                 >
                   R{amt}
@@ -231,21 +235,20 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({
                 step="10"
                 value={customAmount}
                 onChange={(e) => setCustomAmount(e.target.value)}
-                className="w-full pl-9 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-lg font-black text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-[#D13138]"
+                className="w-full pl-9 pr-4 py-3 bg-slate-50 border border-slate-200/80 rounded-2xl text-lg font-black text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-[#181D20]"
               />
             </div>
           </div>
 
-          {/* Exclusive Card Payment Method Section */}
-          <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200/80 space-y-3">
-            <div className="flex items-center justify-between">
+          {/* Card Payment Method Section */}
+          <div className="bg-white rounded-[26px] p-4 border border-slate-200/90 shadow-xs space-y-3">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <div className="flex items-center gap-2">
-                <CreditCard className="w-4 h-4 text-[#D13138]" />
+                <CreditCard className="w-4 h-4 text-[#181D20]" />
                 <span className="text-xs font-extrabold uppercase tracking-wider text-slate-900">
-                  Card Payment Details
+                  Card Details
                 </span>
               </div>
-              {/* Card Badges */}
               <div className="flex items-center gap-1.5">
                 <span className="px-2 py-0.5 rounded bg-blue-600 text-white font-extrabold text-[9px] tracking-wider">
                   VISA
@@ -258,7 +261,7 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({
 
             {/* Card Number */}
             <div>
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
                 Card Number
               </label>
               <div className="relative">
@@ -268,29 +271,29 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({
                   value={cardNumber}
                   onChange={(e) => setCardNumber(e.target.value)}
                   placeholder="4532 •••• •••• ••••"
-                  className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl font-mono text-sm font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-[#3F76C5]"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200/80 rounded-xl font-mono text-sm font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-[#181D20]"
                 />
-                <Lock className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2" />
+                <Lock className="w-3.5 h-3.5 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2" />
               </div>
             </div>
 
             {/* Cardholder Name */}
             <div>
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
                 Cardholder Name
               </label>
               <input
                 type="text"
                 value={cardHolder}
                 onChange={(e) => setCardHolder(e.target.value)}
-                className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-[#3F76C5]"
+                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200/80 rounded-xl text-xs font-semibold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-[#181D20]"
               />
             </div>
 
             {/* Expiry & CVV */}
             <div className="grid grid-cols-2 gap-2.5">
               <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
                   Expiry (MM/YY)
                 </label>
                 <input
@@ -299,11 +302,11 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({
                   value={cardExpiry}
                   onChange={(e) => setCardExpiry(e.target.value)}
                   placeholder="MM/YY"
-                  className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl font-mono text-xs font-bold text-slate-900 text-center focus:outline-hidden focus:ring-2 focus:ring-[#3F76C5]"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200/80 rounded-xl font-mono text-xs font-bold text-slate-900 text-center focus:outline-hidden focus:ring-2 focus:ring-[#181D20]"
                 />
               </div>
               <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
+                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
                   CVV / CVC
                 </label>
                 <input
@@ -312,39 +315,39 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({
                   value={cardCvv}
                   onChange={(e) => setCardCvv(e.target.value)}
                   placeholder="•••"
-                  className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl font-mono text-xs font-bold text-slate-900 text-center focus:outline-hidden focus:ring-2 focus:ring-[#3F76C5]"
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200/80 rounded-xl font-mono text-xs font-bold text-slate-900 text-center focus:outline-hidden focus:ring-2 focus:ring-[#181D20]"
                 />
               </div>
             </div>
 
             <div className="flex items-center gap-1.5 text-[10px] text-slate-500 pt-1">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-              <span>Protected by 3D-Secure 2.0 bank encryption</span>
+              <span>3D-Secure 2.0 bank encryption</span>
             </div>
           </div>
 
           {/* Member Confirmation Summary Note */}
-          <div className="p-3 rounded-xl bg-slate-100 text-[11px] text-slate-600 flex items-center justify-between">
+          <div className="p-3 rounded-2xl bg-slate-100 text-[11px] text-slate-600 flex items-center justify-between">
             <span>Allocated to: <strong>{member.name}</strong></span>
-            <span className="font-mono text-slate-500">{member.membershipNumber}</span>
+            <span className="font-mono text-slate-500 font-bold">{member.membershipNumber}</span>
           </div>
 
           {/* Submit Action */}
-          <div className="pt-2">
+          <div className="pt-1">
             <button
               onClick={handlePayNow}
               disabled={isProcessing || !customAmount || parseFloat(customAmount) <= 0}
-              className="w-full py-3.5 rounded-2xl bg-[#D13138] text-white font-extrabold text-base hover:bg-[#b8262d] transition shadow-lg shadow-red-500/25 active:scale-98 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full py-3.5 rounded-full bg-[#181D20] text-white font-extrabold text-sm hover:bg-black transition shadow-lg active:scale-98 disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
             >
               {isProcessing ? (
                 <>
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   <span>Processing Card Payment...</span>
                 </>
               ) : (
                 <>
-                  <CreditCard className="w-5 h-5" />
-                  <span>Pay R{customAmount || 0} with Card</span>
+                  <CreditCard className="w-4 h-4" />
+                  <span>Give R{customAmount || 0} via Card</span>
                 </>
               )}
             </button>
@@ -352,14 +355,14 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({
         </div>
       ) : (
         /* History View */
-        <div className="p-4 space-y-3 flex-1">
+        <div className="space-y-3 flex-1">
           {/* Summary Box */}
-          <div className="bg-gradient-to-br from-[#3F76C5] to-[#204a84] text-white p-5 rounded-3xl shadow-md">
-            <p className="text-xs text-blue-200 font-medium uppercase tracking-wider">
+          <div className="bg-gradient-to-br from-[#181D20] to-[#2B3237] text-white p-5 rounded-[26px] shadow-md">
+            <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">
               Total Recorded Giving
             </p>
             <h3 className="text-2xl font-black mt-0.5">R{totalGiven.toLocaleString()}</h3>
-            <p className="text-[11px] text-blue-200/80 mt-1">
+            <p className="text-[11px] text-slate-300/80 mt-1">
               Receipts are stored on your device and synchronized with Church Branch Records.
             </p>
           </div>
@@ -369,30 +372,25 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({
               <div
                 key={pay.id}
                 onClick={() => setActiveReceipt(pay)}
-                className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs flex items-center justify-between cursor-pointer hover:border-slate-300 transition"
+                className="p-4 rounded-[22px] bg-white border border-slate-200/90 shadow-xs flex items-center justify-between cursor-pointer hover:border-slate-400 transition active:scale-[0.99]"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-red-50 text-[#D13138] flex items-center justify-center shrink-0">
-                    <Receipt className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-slate-900">{pay.categoryLabel}</h4>
+                <div className="flex items-center gap-3 min-w-0">
+                  <Receipt className="w-5 h-5 text-[#181D20] shrink-0 stroke-[2]" />
+                  <div className="min-w-0">
+                    <h4 className="text-xs font-bold text-slate-900 truncate">{pay.categoryLabel}</h4>
                     <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-0.5">
                       <span>{pay.date}</span>
                       <span>•</span>
-                      <span className="flex items-center gap-1">
-                        <CreditCard className="w-3 h-3 text-slate-400" />
-                        Card
-                      </span>
+                      <span>Card</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="text-right">
+                <div className="text-right shrink-0">
                   <span className="text-sm font-extrabold text-slate-900 block">
                     R{pay.amount.toFixed(2)}
                   </span>
-                  <span className="inline-block mt-0.5 px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[10px] font-bold">
+                  <span className="inline-block mt-0.5 px-2.5 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-extrabold shadow-xs">
                     {pay.status}
                   </span>
                 </div>

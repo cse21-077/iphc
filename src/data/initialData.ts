@@ -17,7 +17,7 @@ export const initialMemberProfile: MemberProfile = {
   branch: 'Zuurbekom Headquarters (Silo)',
   section: 'Section 4 — Baruti & Banna',
   baptismNumber: 'ZB-2012-0941',
-  photo: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&auto=format&fit=crop&q=80',
+  photo: '/tumelolekolwane.jpg',
   phone: '+27 82 459 1083',
   email: 'tumelo.lekolwane@gmail.com',
   address: 'Stand 1420, Silo Zuurbekom, Westonaria, Gauteng',
@@ -105,7 +105,7 @@ export const initialCeremonies: Ceremony[] = [
     isPreRegistrationOpen: true,
     isRegistered: false,
     registeredFamilyMembers: [],
-    imageUrl: 'https://images.unsplash.com/photo-1544427920-c49ccfb85579?w=800&auto=format&fit=crop&q=80',
+    imageUrl: '/silo.jpg',
   },
   {
     id: 'cer_002',

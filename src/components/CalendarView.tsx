@@ -128,13 +128,25 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
       {/* Ceremonies List: Photographic Cards with Floating Pill Overlay */}
       <div className="p-4 space-y-3.5 flex-1">
         {filteredCeremonies.map((ceremony) => {
+          // Primary local images per category (use these as main images; do NOT use tumelolekolwane.jpg)
+          const primaryMap: Record<string, string> = {
+            Monthend: '/silo.jpg',
+            Sethephu: '/watch.jpg',
+            Annual: '/give.jpg',
+            Youth: '/youthandyoung.jpg',
+          };
+
+          const imageSrc =
+            primaryMap[ceremony.category] || ceremony.imageUrl ||
+            'https://images.unsplash.com/photo-1544427920-c49ccfb85579?w=800&auto=format&fit=crop&q=80';
+
           return (
             <div
               key={ceremony.id}
               onClick={() => handleOpenCeremony(ceremony)}
               className="relative rounded-[26px] overflow-hidden shadow-xs border border-slate-100 h-[220px] flex flex-col justify-end p-3.5 group cursor-pointer"
               style={{
-                backgroundImage: `url('${ceremony.imageUrl || 'https://images.unsplash.com/photo-1544427920-c49ccfb85579?w=800&auto=format&fit=crop&q=80'}')`,
+                backgroundImage: `url('${imageSrc}')`,
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
               }}

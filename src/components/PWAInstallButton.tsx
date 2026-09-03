@@ -68,7 +68,7 @@ export const PWAInstallButton: React.FC<{ compact?: boolean }> = ({ compact = fa
 
             <div className="mt-4 space-y-3.5 text-sm text-slate-700">
               <div className="flex items-start gap-3 p-2.5 rounded-xl bg-slate-50 border border-slate-100">
-                <div className="p-2 rounded-lg bg-[#3F76C5]/10 text-[#3F76C5] shrink-0">
+                <div className="p-2 rounded-lg bg-[#3F76C5] text-white shrink-0">
                   <Share className="w-4 h-4" />
                 </div>
                 <div>
@@ -78,7 +78,7 @@ export const PWAInstallButton: React.FC<{ compact?: boolean }> = ({ compact = fa
               </div>
 
               <div className="flex items-start gap-3 p-2.5 rounded-xl bg-slate-50 border border-slate-100">
-                <div className="p-2 rounded-lg bg-[#D13138]/10 text-[#D13138] shrink-0">
+                <div className="p-2 rounded-lg bg-[#D13138] text-white shrink-0">
                   <PlusSquare className="w-4 h-4" />
                 </div>
                 <div>
@@ -87,7 +87,7 @@ export const PWAInstallButton: React.FC<{ compact?: boolean }> = ({ compact = fa
                 </div>
               </div>
 
-              <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-100 text-emerald-800 text-xs leading-relaxed">
+              <div className="p-2.5 rounded-xl bg-emerald-600 text-white text-xs leading-relaxed">
                 ✓ Once installed, MMUSO opens full-screen without address bars and works seamlessly offline at Silo!
               </div>
             </div>

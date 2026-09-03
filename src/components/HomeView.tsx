@@ -61,7 +61,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             {member.title} {member.name}
           </h1>
           <p className="text-xs text-slate-400 font-medium mt-0.5">
-            {member.branch} • {member.council}
+            {member.branch}
           </p>
         </div>
 
@@ -79,65 +79,72 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </button>
       </div>
 
-      {/* Hero Feature Card: Rich Color for Silo Digital Pass */}
+      {/* Hero Feature Card: Blue Digital ID Card */}
       <div
         id="hero-silo-pass-card"
         onClick={onOpenMembershipPass}
-        className="relative rounded-[24px] bg-gradient-to-br from-[#2B5249] via-[#21423A] to-[#18342D] text-white p-5 shadow-[0_12px_28px_rgba(33,66,58,0.22)] overflow-hidden cursor-pointer active:scale-[0.99] transition-transform duration-150 group border border-emerald-900/40"
+        className={`relative rounded-[24px] text-white p-5 overflow-hidden cursor-pointer active:scale-[0.99] transition-all duration-150 group border select-none ${
+          member.isPending
+            ? 'bg-slate-800/90 border-slate-700/80 shadow-md grayscale-[30%]'
+            : 'bg-gradient-to-br from-[#1E40AF] via-[#1D4ED8] to-[#172554] shadow-[0_12px_28px_rgba(29,78,216,0.25)] border-blue-400/20'
+        }`}
       >
         {/* Soft atmospheric gradient accents */}
-        <div className="absolute -right-8 -bottom-8 w-44 h-44 rounded-full bg-emerald-400/10 blur-2xl pointer-events-none" />
-        <div className="absolute left-1/4 -top-8 w-32 h-32 rounded-full bg-teal-200/10 blur-xl pointer-events-none" />
+        <div className="absolute -right-8 -bottom-8 w-44 h-44 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+        <div className="absolute left-1/4 -top-8 w-32 h-32 rounded-full bg-white/5 blur-xl pointer-events-none" />
 
         <div className="relative z-10 flex items-center justify-between gap-3">
-          {/* Left Column: Typography & Clean Number */}
+          {/* Left Column: Digital ID Typography */}
           <div className="flex-1 min-w-0">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/15 text-emerald-200 text-[10px] font-extrabold uppercase tracking-wider mb-2 backdrop-blur-xs">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span>IPHC Digital Pass</span>
-            </span>
-
-            <h2 className="text-xl font-black text-white tracking-tight leading-tight">
-              Silo Digital Pass
-            </h2>
-            <p className="text-xs text-emerald-100/80 font-normal mt-1 leading-relaxed">
-              Official membership & sacred pilgrimage clearance
-            </p>
-
-            <div className="mt-3.5 flex items-center gap-2 flex-wrap">
-              <div className="px-3 py-1 rounded-full bg-white/15 border border-white/20 text-white font-mono text-xs font-bold backdrop-blur-xs">
-                {member.membershipNumber}
-              </div>
-              <span className="text-[11px] font-bold text-emerald-300">
-                100% Active
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-blue-200/90">
+                IPHC Digital ID
               </span>
+              {member.isPending && (
+                <span className="px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 text-[9px] font-extrabold uppercase">
+                  Pending
+                </span>
+              )}
             </div>
+            <h2 className="text-xl font-black font-mono tracking-tight text-white mt-0.5 truncate">
+              {member.membershipNumber}
+            </h2>
+            <p className="text-xs text-blue-100 font-semibold mt-0.5 truncate">
+              {member.isPending ? `Verification by ${member.branch}` : 'Official Member Clearance'}
+            </p>
           </div>
 
           {/* Right Column: Circular Framed Avatar */}
           <div className="shrink-0 relative">
-            <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-white/60 shadow-md relative group-hover:scale-105 transition duration-200">
+            <div className="w-15 h-15 rounded-full overflow-hidden border-2 border-white/70 shadow-md relative group-hover:scale-105 transition duration-200">
               <img
                 src={member.photo}
                 alt={member.name}
                 className="w-full h-full object-cover"
               />
-              <div className="absolute inset-0 bg-black/25 flex items-center justify-center">
+              <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
                 <QrCode className="w-5 h-5 text-white" />
               </div>
             </div>
-            <span className="block text-center text-[10px] font-bold text-emerald-200 mt-1 uppercase tracking-wider">
-              Tap for QR
-            </span>
           </div>
+        </div>
+
+        {/* Clean Footer Row */}
+        <div className="mt-4 pt-3 border-t border-white/15 flex items-center justify-between text-xs relative z-10">
+          <span className="font-semibold text-blue-100 truncate">
+            {member.section}
+          </span>
+          <span className="text-[11px] font-bold text-blue-200 uppercase tracking-wider">
+            {member.isPending ? 'Pending Approval Notice →' : 'Tap for Scanner →'}
+          </span>
         </div>
       </div>
 
-      {/* Popular Services: 2-Column Responsive Grid (Categories & Bulletin Banner Removed per Request) */}
+      {/* Quick Actions (Formerly Popular Services): Long horizontal cards like reference image */}
       <div className="space-y-3">
         <div className="flex items-center justify-between px-0.5">
           <h3 className="text-base font-extrabold text-[#181D20] tracking-tight">
-            Popular Services
+            Quick Actions
           </h3>
           <button
             onClick={() => onNavigateTab('calendar')}
@@ -147,166 +154,104 @@ export const HomeView: React.FC<HomeViewProps> = ({
           </button>
         </div>
 
-        {/* 2-Column Photographic Grid */}
-        <div className="grid grid-cols-2 gap-3">
-          {/* Service 1: Spring Silo Pilgrimage */}
+        {/* Stacked Full-Width Long Cards with Icon Top Left */}
+        <div className="space-y-3">
+          {/* Card 1: Upcoming Ceremony */}
           {upcomingCeremony && (
             <div
               id="home-card-upcoming-ceremony"
               onClick={() => onOpenCeremonyRegistration(upcomingCeremony)}
-              className="relative rounded-[22px] overflow-hidden shadow-xs border border-slate-100 h-[195px] flex flex-col justify-end p-2.5 group cursor-pointer"
+              className="relative rounded-[22px] overflow-hidden shadow-md border border-slate-200/60 h-[115px] p-4 flex flex-col justify-between group cursor-pointer active:scale-[0.99] transition duration-150"
               style={{
-                backgroundImage: `url('https://images.unsplash.com/photo-1544427920-c49ccfb85579?w=600&auto=format&fit=crop&q=80')`,
+                backgroundImage: `url('/silo.jpg')`,
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
               }}
             >
-              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
+              {/* Dark Overlay Gradient */}
+              <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/75 to-slate-950/40 group-hover:from-slate-950/95 transition duration-200" />
 
-              {/* Floating pill card overlay */}
-              <div className="relative z-10 rounded-[16px] bg-slate-900/80 backdrop-blur-md border border-white/15 p-2.5 text-white shadow-lg flex items-center justify-between gap-1.5">
-                <div className="min-w-0">
-                  <h4 className="text-xs font-black text-white leading-tight truncate">
-                    Silo 2026
-                  </h4>
-                  <p className="text-[10px] text-slate-300 font-medium mt-0.5 truncate">
-                    Pilgrimage
-                  </p>
+              {/* Top Row: Icon Top-Left + Action Arrow Top-Right */}
+              <div className="relative z-10 flex items-center justify-between">
+                <Sun className="w-5 h-5 text-white stroke-[2.2]" />
+                <div className="w-7 h-7 rounded-full bg-white/10 group-hover:bg-white/20 backdrop-blur-md flex items-center justify-center text-white shrink-0 transition">
+                  <ArrowUpRight className="w-4 h-4 stroke-[2.5]" />
                 </div>
+              </div>
 
-                <div className="flex items-center gap-0.5 shrink-0">
-                  <button
-                    onClick={(e) => toggleSave('silo', e)}
-                    className={`p-1.5 transition ${
-                      savedItems['silo']
-                        ? 'text-white'
-                        : 'text-slate-400 hover:text-white'
-                    }`}
-                    title="Bookmark"
-                  >
-                    <Bookmark className="w-3.5 h-3.5 fill-current" />
-                  </button>
-
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onOpenCeremonyRegistration(upcomingCeremony);
-                    }}
-                    className="p-1.5 text-white hover:text-slate-200 transition active:scale-95"
-                    title="Register"
-                  >
-                    <ArrowUpRight className="w-3.5 h-3.5 stroke-[2.5]" />
-                  </button>
-                </div>
+              {/* Bottom Row: Title in Church Language + Plain Date Subtitle */}
+              <div className="relative z-10 min-w-0">
+                <h4 className="text-sm font-black text-white leading-tight truncate">
+                  {upcomingCeremony.title || 'Mokete wa Paseka'}
+                </h4>
+                <p className="text-xs text-slate-300 font-medium mt-0.5 truncate">
+                  {upcomingCeremony.startDate ? `${upcomingCeremony.startDate} · Tap to register` : '12 April · Tap to register'}
+                </p>
               </div>
             </div>
           )}
 
-          {/* Service 2: Sacred Karolo Giving */}
+          {/* Card 2: Give */}
           <div
             id="home-card-giving"
             onClick={() => onOpenPayments('karolo')}
-            className="relative rounded-[22px] overflow-hidden shadow-xs border border-slate-100 h-[195px] flex flex-col justify-end p-2.5 group cursor-pointer"
+            className="relative rounded-[22px] overflow-hidden shadow-md border border-slate-200/60 h-[115px] p-4 flex flex-col justify-between group cursor-pointer active:scale-[0.99] transition duration-150"
             style={{
-              backgroundImage: `url('https://images.unsplash.com/photo-1543807535-eceef0bc6599?w=600&auto=format&fit=crop&q=80')`,
+              backgroundImage: `url('/give.jpg')`,
               backgroundSize: 'cover',
               backgroundPosition: 'center',
             }}
           >
-            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/75 to-slate-950/40 group-hover:from-slate-950/95 transition duration-200" />
 
-            <div className="relative z-10 rounded-[16px] bg-slate-900/80 backdrop-blur-md border border-white/15 p-2.5 text-white shadow-lg flex items-center justify-between gap-1.5">
-              <div className="min-w-0">
-                <h4 className="text-xs font-black text-white leading-tight truncate">
-                  Card Giving
-                </h4>
-                <p className="text-[10px] text-slate-300 font-medium mt-0.5 truncate">
-                  Karolo & Tithing
-                </p>
+            {/* Top Row: Icon Top-Left + Action Arrow Top-Right */}
+            <div className="relative z-10 flex items-center justify-between">
+              <BookOpen className="w-5 h-5 text-white stroke-[2.2]" />
+              <div className="w-7 h-7 rounded-full bg-white/10 group-hover:bg-white/20 backdrop-blur-md flex items-center justify-center text-white shrink-0 transition">
+                <ArrowRight className="w-4 h-4 stroke-[2.5]" />
               </div>
+            </div>
 
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onOpenPayments('karolo');
-                }}
-                className="p-1.5 text-white hover:text-slate-200 transition active:scale-95 shrink-0"
-                title="Give with Card"
-              >
-                <ArrowRight className="w-3.5 h-3.5 stroke-[2.5]" />
-              </button>
+            {/* Bottom Row: Clear Title & Subtitle */}
+            <div className="relative z-10 min-w-0">
+              <h4 className="text-sm font-black text-white leading-tight truncate">
+                Give
+              </h4>
+              <p className="text-xs text-slate-300 font-medium mt-0.5 truncate">
+                Karolo, Polokano & more
+              </p>
             </div>
           </div>
 
-          {/* Service 3: Sermons & Choirs */}
+          {/* Card 3: Watch & Listen */}
           <div
             id="home-card-media"
             onClick={onOpenMedia}
-            className="relative rounded-[22px] overflow-hidden shadow-xs border border-slate-100 h-[195px] flex flex-col justify-end p-2.5 group cursor-pointer"
+            className="relative rounded-[22px] overflow-hidden shadow-md border border-slate-200/60 h-[115px] p-4 flex flex-col justify-between group cursor-pointer active:scale-[0.99] transition duration-150"
             style={{
-              backgroundImage: `url('https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=600&auto=format&fit=crop&q=80')`,
+              backgroundImage: `url('/watch.jpg')`,
               backgroundSize: 'cover',
               backgroundPosition: 'center',
             }}
           >
-            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/75 to-slate-950/40 group-hover:from-slate-950/95 transition duration-200" />
 
-            <div className="relative z-10 rounded-[16px] bg-slate-900/80 backdrop-blur-md border border-white/15 p-2.5 text-white shadow-lg flex items-center justify-between gap-1.5">
-              <div className="min-w-0">
-                <h4 className="text-xs font-black text-white leading-tight truncate">
-                  Mmino wa Khotso
-                </h4>
-                <p className="text-[10px] text-slate-300 font-medium mt-0.5 truncate">
-                  Choirs & Sermons
-                </p>
+            {/* Top Row: Icon Top-Left + Action Arrow Top-Right */}
+            <div className="relative z-10 flex items-center justify-between">
+              <QrCode className="w-5 h-5 text-white stroke-[2.2]" />
+              <div className="w-7 h-7 rounded-full bg-white/10 group-hover:bg-white/20 backdrop-blur-md flex items-center justify-center text-white shrink-0 transition">
+                <ArrowRight className="w-4 h-4 stroke-[2.5]" />
               </div>
-
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onOpenMedia();
-                }}
-                className="p-1.5 text-white hover:text-slate-200 transition active:scale-95 shrink-0"
-                title="Listen to Media"
-              >
-                <ArrowRight className="w-3.5 h-3.5 stroke-[2.5]" />
-              </button>
             </div>
-          </div>
 
-          {/* Service 4: Sabbath Fast Check-In */}
-          <div
-            id="home-card-scan"
-            onClick={() => onNavigateTab('scan')}
-            className="relative rounded-[22px] overflow-hidden shadow-xs border border-slate-100 h-[195px] flex flex-col justify-end p-2.5 group cursor-pointer"
-            style={{
-              backgroundImage: `url('https://images.unsplash.com/photo-1519817650390-64a93db51149?w=600&auto=format&fit=crop&q=80')`,
-              backgroundSize: 'cover',
-              backgroundPosition: 'center',
-            }}
-          >
-            <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
-
-            <div className="relative z-10 rounded-[16px] bg-slate-900/80 backdrop-blur-md border border-white/15 p-2.5 text-white shadow-lg flex items-center justify-between gap-1.5">
-              <div className="min-w-0">
-                <h4 className="text-xs font-black text-white leading-tight truncate">
-                  Sabbath Check-In
-                </h4>
-                <p className="text-[10px] text-slate-300 font-medium mt-0.5 truncate">
-                  Fast QR Scan
-                </p>
-              </div>
-
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onNavigateTab('scan');
-                }}
-                className="p-1.5 text-white hover:text-slate-200 transition active:scale-95 shrink-0"
-                title="Open Scanner"
-              >
-                <ArrowRight className="w-3.5 h-3.5 stroke-[2.5]" />
-              </button>
+            {/* Bottom Row: Broad Title & Subtitle */}
+            <div className="relative z-10 min-w-0">
+              <h4 className="text-sm font-black text-white leading-tight truncate">
+                Watch & Listen
+              </h4>
+              <p className="text-xs text-slate-300 font-medium mt-0.5 truncate">
+                Latest sermons and music
+              </p>
             </div>
           </div>
         </div>
