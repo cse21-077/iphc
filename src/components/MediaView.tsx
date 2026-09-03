@@ -5,6 +5,8 @@ import {
   Pause,
   Headphones,
   Video,
+  Image as ImageIcon,
+  Maximize2,
   Clock,
   BookOpen,
   User,
@@ -19,11 +21,23 @@ interface MediaViewProps {
   onBack?: () => void;
 }
 
+const SILO_GALLERY = [
+  { src: '/assets/media/leader-blessing.jpg', caption: 'Open Arms at Silo' },
+  { src: '/assets/media/legacy-family.jpg', caption: 'Like Father, Like Son' },
+  { src: '/assets/media/leader-podium.jpg', caption: 'Address to the Faithful' },
+  { src: '/assets/media/regalia-portrait.jpg', caption: 'Ceremonial Regalia' },
+  { src: '/assets/media/leader-reading.jpg', caption: 'Proclamation of the Word' },
+  { src: '/assets/media/red-white-gathering.jpg', caption: 'Red & White Gathering' },
+  { src: '/assets/media/leader-address.jpg', caption: 'Blessing the Congregation' },
+  { src: '/assets/media/branch-procession.jpg', caption: 'Branch Procession' },
+];
+
 export const MediaView: React.FC<MediaViewProps> = ({ mediaItems, onBack }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [activeMedia, setActiveMedia] = useState<MediaItem | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackProgress, setPlaybackProgress] = useState(35);
+  const [lightboxImage, setLightboxImage] = useState<{ src: string; caption: string } | null>(null);
 
   const categories = ['All', 'Sermons', 'Announcements', 'Events', 'Archive'];
 
@@ -33,6 +47,10 @@ export const MediaView: React.FC<MediaViewProps> = ({ mediaItems, onBack }) => {
       : mediaItems.filter((m) => m.category === selectedCategory);
 
   const handleOpenMedia = (item: MediaItem) => {
+    if (item.type === 'photo') {
+      setLightboxImage({ src: item.thumbnail, caption: item.title });
+      return;
+    }
     setActiveMedia(item);
     setIsPlaying(true);
     setPlaybackProgress(25);
@@ -81,79 +99,149 @@ export const MediaView: React.FC<MediaViewProps> = ({ mediaItems, onBack }) => {
         </div>
       </div>
 
+      {/* Silo Photo Gallery — official photographs strip */}
+      <div className="pt-4">
+        <div className="flex items-center justify-between px-4 mb-2.5">
+          <h3 className="text-sm font-black text-slate-900 tracking-tight">Silo Gallery</h3>
+          <a
+            href="https://www.instagram.com/iphcmediateam"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1.5 text-[10px] font-extrabold text-[#3F76C5] uppercase tracking-widest hover:underline"
+          >
+            <img
+              src="/assets/media/media-team-logo.jpg"
+              alt="IPHC Media Team"
+              className="w-5 h-5 rounded-full object-cover border border-slate-200"
+            />
+            @iphcmediateam
+          </a>
+        </div>
+        <div className="flex gap-2.5 overflow-x-auto no-scrollbar px-4 pb-1.5">
+          {SILO_GALLERY.map((photo) => (
+            <button
+              key={photo.src}
+              onClick={() => setLightboxImage(photo)}
+              className="relative shrink-0 w-32 h-44 rounded-2xl overflow-hidden border border-slate-200 shadow-xs active:scale-95 transition group"
+            >
+              <img
+                src={photo.src}
+                alt={photo.caption}
+                loading="lazy"
+                className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+              />
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent p-2 pt-6 text-left">
+                <p className="text-[9px] font-bold text-white leading-tight">{photo.caption}</p>
+              </div>
+              <div className="absolute top-2 right-2 p-1 rounded-full bg-black/50 text-white/90">
+                <Maximize2 className="w-3 h-3" />
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Media Cards Grid/List */}
       <div className="p-4 space-y-3.5 flex-1">
-        {filteredItems.map((item) => (
-          <div
-            key={item.id}
-            onClick={() => handleOpenMedia(item)}
-            className="bg-white rounded-3xl overflow-hidden shadow-xs border border-slate-200/80 hover:border-slate-300 transition cursor-pointer active:scale-[0.99] group flex flex-col"
-          >
-            {/* Thumbnail Header with Play Overlay */}
-            <div className="relative aspect-video w-full bg-slate-900 overflow-hidden">
-              <img
-                src={item.thumbnail}
-                alt={item.title}
-                className="w-full h-full object-cover group-hover:scale-105 transition duration-500 opacity-90"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+        {filteredItems.map((item) => {
+          const isPhoto = item.type === 'photo';
+          return (
+            <div
+              key={item.id}
+              onClick={() => handleOpenMedia(item)}
+              className="bg-white rounded-3xl overflow-hidden shadow-xs border border-slate-200/80 hover:border-slate-300 transition cursor-pointer active:scale-[0.99] group flex flex-col"
+            >
+              {/* Thumbnail Header with Play / Expand Overlay */}
+              <div
+                className={`relative w-full bg-slate-900 overflow-hidden ${
+                  isPhoto ? 'aspect-[4/5] max-h-[400px]' : 'aspect-video'
+                }`}
+              >
+                <img
+                  src={item.thumbnail}
+                  alt={item.title}
+                  loading="lazy"
+                  className={`w-full h-full ${
+                    isPhoto ? 'object-cover' : 'object-cover'
+                  } group-hover:scale-105 transition duration-500 opacity-95`}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
 
-              {/* Badges */}
-              <div className="absolute top-3 left-3 flex items-center gap-1.5">
-                <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-black/60 text-white backdrop-blur-md flex items-center gap-1">
-                  {item.type === 'video' ? (
-                    <Video className="w-3 h-3 text-[#D13138]" />
-                  ) : (
-                    <Headphones className="w-3 h-3 text-[#3F76C5]" />
-                  )}
-                  <span>{item.category}</span>
-                </span>
-
-                {item.isMemberOnly && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#D13138]/90 text-white flex items-center gap-1">
-                    <Lock className="w-2.5 h-2.5" />
-                    <span>Member Pass</span>
+                {/* Badges */}
+                <div className="absolute top-3 left-3 flex items-center gap-1.5">
+                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-black/60 text-white backdrop-blur-md flex items-center gap-1">
+                    {item.type === 'video' ? (
+                      <Video className="w-3 h-3 text-[#D13138]" />
+                    ) : item.type === 'photo' ? (
+                      <ImageIcon className="w-3 h-3 text-emerald-300" />
+                    ) : (
+                      <Headphones className="w-3 h-3 text-[#3F76C5]" />
+                    )}
+                    <span>{item.category}</span>
                   </span>
+
+                  {item.isMemberOnly && (
+                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#D13138]/90 text-white flex items-center gap-1">
+                      <Lock className="w-2.5 h-2.5" />
+                      <span>Member Pass</span>
+                    </span>
+                  )}
+                </div>
+
+                {/* Duration / type pill */}
+                <div className="absolute bottom-3 right-3 px-2 py-0.5 rounded-md bg-black/70 text-white text-[11px] font-mono font-medium flex items-center gap-1 backdrop-blur-xs">
+                  <Clock className="w-3 h-3 text-slate-300" />
+                  <span>{item.duration}</span>
+                </div>
+
+                {/* Center Action Icon */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div
+                    className={`w-12 h-12 rounded-full bg-white/90 text-slate-900 flex items-center justify-center shadow-xl group-hover:scale-110 transition ${
+                      isPhoto
+                        ? 'group-hover:bg-emerald-600 group-hover:text-white'
+                        : 'group-hover:bg-[#D13138] group-hover:text-white'
+                    }`}
+                  >
+                    {isPhoto ? (
+                      <Maximize2 className="w-5 h-5" />
+                    ) : (
+                      <Play className="w-5 h-5 fill-current translate-x-0.5" />
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Description & Metadata */}
+              <div className="p-4">
+                <h3 className="text-sm font-bold text-slate-900 leading-snug group-hover:text-[#3F76C5] transition">
+                  {item.title}
+                </h3>
+
+                {item.description && (
+                  <p className="mt-1.5 text-[11px] text-slate-500 leading-relaxed line-clamp-2">
+                    {item.description}
+                  </p>
+                )}
+
+                <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
+                  <span className="flex items-center gap-1 truncate max-w-[200px]">
+                    <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <span className="font-medium text-slate-700 truncate">{item.speaker}</span>
+                  </span>
+                  <span>{item.date}</span>
+                </div>
+
+                {item.scriptureReference && (
+                  <div className="mt-2 pt-2 border-t border-slate-100 flex items-center gap-1 text-[11px] text-[#3F76C5] font-semibold">
+                    <BookOpen className="w-3.5 h-3.5 shrink-0" />
+                    <span>{item.scriptureReference}</span>
+                  </div>
                 )}
               </div>
-
-              {/* Duration pill */}
-              <div className="absolute bottom-3 right-3 px-2 py-0.5 rounded-md bg-black/70 text-white text-[11px] font-mono font-medium flex items-center gap-1 backdrop-blur-xs">
-                <Clock className="w-3 h-3 text-slate-300" />
-                <span>{item.duration}</span>
-              </div>
-
-              {/* Center Play Icon Button */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-12 h-12 rounded-full bg-white/90 text-slate-900 flex items-center justify-center shadow-xl group-hover:scale-110 transition group-hover:bg-[#D13138] group-hover:text-white">
-                  <Play className="w-5 h-5 fill-current translate-x-0.5" />
-                </div>
-              </div>
             </div>
-
-            {/* Description & Metadata */}
-            <div className="p-4">
-              <h3 className="text-sm font-bold text-slate-900 leading-snug group-hover:text-[#3F76C5] transition">
-                {item.title}
-              </h3>
-
-              <div className="mt-2 flex items-center justify-between text-xs text-slate-500">
-                <span className="flex items-center gap-1 truncate max-w-[200px]">
-                  <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                  <span className="font-medium text-slate-700 truncate">{item.speaker}</span>
-                </span>
-                <span>{item.date}</span>
-              </div>
-
-              {item.scriptureReference && (
-                <div className="mt-2 pt-2 border-t border-slate-100 flex items-center gap-1 text-[11px] text-[#3F76C5] font-semibold">
-                  <BookOpen className="w-3.5 h-3.5 shrink-0" />
-                  <span>{item.scriptureReference}</span>
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Inline Player Modal (No external page, plays right inside app) */}
@@ -267,6 +355,43 @@ export const MediaView: React.FC<MediaViewProps> = ({ mediaItems, onBack }) => {
                 +15s
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Fullscreen Photo Lightbox (gallery & photo media items) */}
+      {lightboxImage && (
+        <div
+          className="fixed inset-0 z-50 flex flex-col bg-black/95 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => setLightboxImage(null)}
+        >
+          <div className="flex items-center justify-between p-4">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-300">
+              Silo Gallery • Official
+            </span>
+            <button
+              onClick={() => setLightboxImage(null)}
+              className="p-2 rounded-full bg-white/10 text-white hover:bg-white/20 transition"
+              aria-label="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="flex-1 flex items-center justify-center p-4 min-h-0">
+            <img
+              src={lightboxImage.src}
+              alt={lightboxImage.caption}
+              className="max-h-full max-w-full object-contain rounded-2xl shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+
+          <div className="p-4 pb-8 text-center">
+            <p className="text-sm font-bold text-white">{lightboxImage.caption}</p>
+            <p className="text-[10px] text-slate-400 mt-1 uppercase tracking-widest font-bold">
+              IPHC Media Team • Silo Zuurbekom
+            </p>
           </div>
         </div>
       )}

@@ -21,9 +21,9 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="max-w-md mx-auto px-4 h-14 flex items-center justify-between">
         {/* Brand Logo & Name */}
         <div className="flex items-center gap-2.5">
-          <div className="relative w-8 h-8 rounded-xl overflow-hidden border border-gray-200 bg-[#3F76C5] flex items-center justify-center shadow-xs">
+          <div className="relative w-8 h-8 rounded-xl overflow-hidden border border-gray-200 bg-[#0A2A52] flex items-center justify-center shadow-xs">
             <img
-              src="/icon.svg"
+              src="/pwa-192x192.png"
               alt="IPHC Emblem"
               className="w-full h-full object-cover"
             />

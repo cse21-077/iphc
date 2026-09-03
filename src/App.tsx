@@ -43,6 +43,19 @@ export default function App() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [paymentsInitialCategory, setPaymentsInitialCategory] = useState<string | null>(null);
 
+  // Splash screen: show the IPHC emblem on launch, then fade out smoothly
+  const [splashFading, setSplashFading] = useState(false);
+  const [splashGone, setSplashGone] = useState(false);
+
+  useEffect(() => {
+    const fadeTimer = setTimeout(() => setSplashFading(true), 1100);
+    const removeTimer = setTimeout(() => setSplashGone(true), 1750);
+    return () => {
+      clearTimeout(fadeTimer);
+      clearTimeout(removeTimer);
+    };
+  }, []);
+
   // Persistent Domain States with LocalStorage backup
   const [member, setMember] = useState<MemberProfile>(() => {
     const saved = localStorage.getItem('iphc_mmuso_member');
@@ -200,6 +213,24 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] flex justify-center text-[#1A1A1A] selection:bg-[#3F76C5] selection:text-white">
+      {/* Launch splash: IPHC emblem on navy, fades out after mount */}
+      {!splashGone && (
+        <div
+          className={`fixed inset-0 z-[100] bg-[#0A2A52] flex flex-col items-center justify-center transition-opacity duration-600 ${
+            splashFading ? 'opacity-0 pointer-events-none' : 'opacity-100'
+          }`}
+        >
+          <img
+            src="/pwa-192x192.png"
+            alt="IPHC Emblem"
+            className="w-26 h-26 rounded-[26px] shadow-[0_20px_50px_rgba(0,0,0,0.45)] animate-pulse"
+          />
+          <div className="text-white font-black text-2xl tracking-[0.3em] mt-5">MMUSO</div>
+          <div className="text-[#8FA8C8] font-bold text-[10px] tracking-[0.3em] mt-2">
+            IPHC • SILO ZUURBEKOM
+          </div>
+        </div>
+      )}
       {/* Mobile container constraint: standard responsive app frame */}
       <div className="w-full max-w-md bg-white min-h-screen flex flex-col shadow-[0_24px_48px_rgba(0,0,0,0.08)] relative border-x border-gray-100">
         {/* Content View Router */}

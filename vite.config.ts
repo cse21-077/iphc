@@ -11,14 +11,14 @@ export default defineConfig(() => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
-        includeAssets: ['apple-touch-icon.png', 'icon.svg'],
+        includeAssets: ['apple-touch-icon.png', 'favicon.png', 'pwa-192x192.png', 'pwa-512x512.png', 'pwa-maskable-512x512.png'],
         manifest: {
           id: '/',
           name: 'IPHC MMUSO Platform',
           short_name: 'MMUSO',
           description: 'Official IPHC Church Member App: digital card, QR check-in, Silo ceremonies, Karolo payments, and FLG directory.',
-          theme_color: '#3F76C5',
-          background_color: '#FFFFFF',
+          theme_color: '#0A2A52',
+          background_color: '#0A2A52',
           display: 'standalone',
           start_url: '/',
           scope: '/',
