@@ -1,9 +1,35 @@
 @import "tailwindcss";
 
 @layer base {
+  html,
   body {
     font-family: 'Montserrat', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     -webkit-tap-highlight-color: transparent;
+    /* Lock zoom & pan: app feels native, no double-tap zoom or pinch scaling */
+    touch-action: manipulation;
+    /* Stop iOS text-size auto-adjust on orientation change */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  html {
+    /* Prevent pull-to-refresh and rubber-band overscroll leaking */
+    overscroll-behavior: none;
+  }
+
+  /* Allow normal panning/scrolling inside scrollable regions and inputs */
+  input,
+  textarea,
+  select,
+  [role='listbox'] {
+    touch-action: manipulation;
+  }
+}
+
+/* Hard-block iOS Safari pinch-zoom gesture (viewport meta alone is ignored there) */
+@supports (-webkit-touch-callout: none) {
+  body {
+    touch-action: manipulation;
   }
 }
 

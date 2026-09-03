@@ -49,7 +49,8 @@ export interface Ceremony {
   startDate: string;
   endDate: string;
   location: string;
-  category: 'Monthend' | 'Paseka' | 'Sethephu' | 'Annual' | 'Youth';
+  month?: number; // 1 = January … 12 = December (Silo annual program)
+  category: 'Monthend' | 'Paseka' | 'Sethephu' | 'Annual' | 'Youth' | 'Dikgaboi' | 'Regional' | 'Special';
   description: string;
   importantNotice: string;
   isPreRegistrationOpen: boolean;

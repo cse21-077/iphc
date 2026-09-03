@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Ceremony, MemberProfile } from '../types';
-import { Ribbon, RibbonColor } from './Ribbon';
 import {
   Calendar as CalendarIcon,
   MapPin,
@@ -8,10 +7,13 @@ import {
   CheckCircle2,
   AlertCircle,
   X,
+  ChevronLeft,
   ChevronRight,
   Sparkles,
   Check,
   Plus,
+  LayoutGrid,
+  List,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -22,13 +24,44 @@ interface CalendarViewProps {
   onOpenCard: () => void;
 }
 
+// The Silo annual program year (demo timeline)
+const APP_YEAR = 2026;
+const APP_TODAY = '2026-09-03';
+
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+const MONTH_SHORT = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
+
+// Week starts on Monday (South African convention); index 0 = Monday … 6 = Sunday
+const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+const toISO = (month: number, day: number) =>
+  `${APP_YEAR}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+const daysInMonth = (month: number) => new Date(APP_YEAR, month, 0).getDate();
+
+const firstWeekdayIndex = (month: number) => {
+  const jsDay = new Date(APP_YEAR, month - 1, 1).getDay(); // 0 = Sunday
+  return (jsDay + 6) % 7; // convert to 0 = Monday
+};
+
 export const CalendarView: React.FC<CalendarViewProps> = ({
   ceremonies,
   member,
   onPreRegister,
   onOpenCard,
 }) => {
-  const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [viewMode, setViewMode] = useState<'calendar' | 'list'>('list');
+  const [listMonthFilter, setListMonthFilter] = useState<number | 'all'>('all');
+  const [calMonth, setCalMonth] = useState(9); // September
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
+
   const [activeCeremony, setActiveCeremony] = useState<Ceremony | null>(null);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
 
@@ -40,12 +73,16 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   const [customFamilyName, setCustomFamilyName] = useState('');
   const [isSuccessState, setIsSuccessState] = useState(false);
 
-  const categories = ['All', 'Monthend', 'Sethephu', 'Annual', 'Youth'];
+  const monthOf = (c: Ceremony) =>
+    c.month ?? parseInt(c.startDate.split('-')[1], 10);
 
-  const filteredCeremonies =
-    selectedCategory === 'All'
-      ? ceremonies
-      : ceremonies.filter((c) => c.category === selectedCategory);
+  const eventsOnDay = (iso: string) =>
+    ceremonies.filter((c) => c.startDate <= iso && iso <= c.endDate);
+
+  const monthEvents = (month: number) =>
+    ceremonies
+      .filter((c) => monthOf(c) === month)
+      .sort((a, b) => a.startDate.localeCompare(b.startDate));
 
   const handleOpenCeremony = (c: Ceremony) => {
     setActiveCeremony(c);
@@ -96,97 +133,332 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     }
   };
 
+  const renderEventCard = (ceremony: Ceremony) => {
+    const primaryMap: Record<string, string> = {
+      Monthend: '/silo.jpg',
+      Sethephu: '/watch.jpg',
+      Annual: '/give.jpg',
+      Youth: '/youthandyoung.jpg',
+      Paseka: '/give.jpg',
+      Dikgaboi: '/silo.jpg',
+      Regional: '/silo.jpg',
+      Special: '/watch.jpg',
+    };
+
+    const imageSrc =
+      primaryMap[ceremony.category] || ceremony.imageUrl ||
+      'https://images.unsplash.com/photo-1544427920-c49ccfb85579?w=800&auto=format&fit=crop&q=80';
+
+    const isPast = ceremony.endDate < APP_TODAY;
+
+    return (
+      <div
+        key={ceremony.id}
+        onClick={() => handleOpenCeremony(ceremony)}
+        className="relative rounded-[26px] overflow-hidden shadow-xs border border-slate-100 h-[220px] flex flex-col justify-end p-3.5 group cursor-pointer"
+        style={{
+          backgroundImage: `url('${imageSrc}')`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      >
+        {/* Subtle gradient vignette */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
+
+        {/* Category ribbon */}
+        <span className="absolute top-3.5 left-3.5 z-10 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-md border border-white/15 text-white text-[10px] font-extrabold uppercase tracking-wider">
+          {ceremony.category}
+        </span>
+        {isPast && (
+          <span className="absolute top-3.5 right-3.5 z-10 px-2.5 py-1 rounded-full bg-white/85 text-slate-600 text-[10px] font-extrabold uppercase tracking-wider">
+            Completed
+          </span>
+        )}
+
+        {/* Minimalist Floating Card Overlay */}
+        <div className="relative z-10 rounded-[20px] bg-slate-900/80 backdrop-blur-md border border-white/15 p-3.5 text-white shadow-lg flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <h3 className="text-sm font-black text-white leading-tight truncate">
+              {ceremony.title}
+            </h3>
+            <p className="text-[11px] text-slate-300 font-medium mt-0.5 truncate">
+              {ceremony.dateRange} • {ceremony.location.split(',')[0]}
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {ceremony.isRegistered ? (
+              <span className="text-[11px] font-bold text-emerald-300 px-2 py-1">
+                Registered
+              </span>
+            ) : ceremony.isPreRegistrationOpen && !isPast ? (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleStartPreRegister(ceremony);
+                }}
+                className="px-3.5 py-1.5 rounded-full bg-white text-[#181D20] text-xs font-bold hover:bg-slate-100 transition active:scale-95 shadow-xs"
+              >
+                Pre-Register
+              </button>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderMonthSection = (month: number) => {
+    const events = monthEvents(month);
+    if (events.length === 0) return null;
+    return (
+      <section key={month}>
+        <div className="flex items-center gap-2.5 mb-2.5 mt-1">
+          <h2 className="text-base font-black text-[#181D20] tracking-tight">
+            {MONTH_NAMES[month - 1]}
+          </h2>
+          <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[10px] font-extrabold">
+            {events.length} {events.length === 1 ? 'event' : 'events'}
+          </span>
+          <div className="flex-1 h-px bg-slate-100" />
+        </div>
+        <div className="space-y-3.5">
+          {events.map(renderEventCard)}
+        </div>
+      </section>
+    );
+  };
+
+  const calDays: Array<number | null> = [];
+  const lead = firstWeekdayIndex(calMonth);
+  for (let i = 0; i < lead; i++) calDays.push(null);
+  for (let d = 1; d <= daysInMonth(calMonth); d++) calDays.push(d);
+
+  const selectedDayEvents = selectedDay ? eventsOnDay(selectedDay) : [];
+
   return (
     <div className="min-h-[calc(100vh-8rem)] flex flex-col pb-20 max-w-md mx-auto">
       {/* Top Banner */}
       <div className="p-4 bg-white border-b border-gray-100">
         <h1 className="text-xl sm:text-2xl font-black text-[#181D20] tracking-tight">
-          Silo Ceremonies
+          Silo Calendar
         </h1>
         <p className="text-xs text-slate-400 font-normal mt-0.5">
           Annual pilgrimage calendar & sacred gatherings
         </p>
 
-        {/* Category Pills */}
-        <div className="flex gap-2 mt-3.5 overflow-x-auto no-scrollbar pb-1">
-          {categories.map((cat) => (
+        {/* View Toggle: Calendar vs List */}
+        <div className="flex mt-3.5 p-1 rounded-full bg-[#F1F3F5]">
+          <button
+            onClick={() => setViewMode('calendar')}
+            className={`flex-1 py-2 rounded-full text-xs font-bold flex items-center justify-center gap-1.5 transition-all duration-150 active:scale-95 ${
+              viewMode === 'calendar'
+                ? 'bg-[#181D20] text-white shadow-xs'
+                : 'text-slate-500 hover:text-slate-900'
+            }`}
+          >
+            <LayoutGrid className="w-3.5 h-3.5" />
+            Calendar View
+          </button>
+          <button
+            onClick={() => setViewMode('list')}
+            className={`flex-1 py-2 rounded-full text-xs font-bold flex items-center justify-center gap-1.5 transition-all duration-150 active:scale-95 ${
+              viewMode === 'list'
+                ? 'bg-[#181D20] text-white shadow-xs'
+                : 'text-slate-500 hover:text-slate-900'
+            }`}
+          >
+            <List className="w-3.5 h-3.5" />
+            List View
+          </button>
+        </div>
+
+        {/* Month Filter — List View only */}
+        {viewMode === 'list' && (
+          <div className="flex gap-2 mt-3 overflow-x-auto no-scrollbar pb-1">
             <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`px-4 py-2 rounded-full text-xs font-semibold shrink-0 transition-all duration-150 active:scale-95 ${
-                selectedCategory === cat
-                  ? 'bg-[#181D20] text-white shadow-xs'
-                  : 'bg-[#F1F3F5] text-slate-600 hover:bg-slate-200 hover:text-slate-900'
+              onClick={() => setListMonthFilter('all')}
+              className={`px-3.5 py-1.5 rounded-full text-[11px] font-bold shrink-0 transition-all duration-150 active:scale-95 ${
+                listMonthFilter === 'all'
+                  ? 'bg-[#3F76C5] text-white shadow-xs'
+                  : 'bg-[#F1F3F5] text-slate-600 hover:bg-slate-200'
               }`}
             >
-              {cat}
+              All Months
             </button>
-          ))}
+            {MONTH_SHORT.map((name, idx) => (
+              <button
+                key={name}
+                onClick={() => setListMonthFilter(listMonthFilter === idx + 1 ? 'all' : idx + 1)}
+                className={`px-3.5 py-1.5 rounded-full text-[11px] font-bold shrink-0 transition-all duration-150 active:scale-95 ${
+                  listMonthFilter === idx + 1
+                    ? 'bg-[#3F76C5] text-white shadow-xs'
+                    : 'bg-[#F1F3F5] text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                {name}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* LIST VIEW: months as English titles with their events below */}
+      {viewMode === 'list' && (
+        <div className="p-4 space-y-5 flex-1">
+          {listMonthFilter === 'all' ? (
+            MONTH_NAMES.map((_, idx) => renderMonthSection(idx + 1))
+          ) : (
+            <>
+              {renderMonthSection(listMonthFilter)}
+              {monthEvents(listMonthFilter).length === 0 && (
+                <p className="text-xs text-slate-400 text-center py-8">
+                  No Silo events scheduled for {MONTH_NAMES[listMonthFilter - 1]}.
+                </p>
+              )}
+            </>
+          )}
         </div>
-      </div>
+      )}
 
-      {/* Ceremonies List: Photographic Cards with Floating Pill Overlay */}
-      <div className="p-4 space-y-3.5 flex-1">
-        {filteredCeremonies.map((ceremony) => {
-          // Primary local images per category (use these as main images; do NOT use tumelolekolwane.jpg)
-          const primaryMap: Record<string, string> = {
-            Monthend: '/silo.jpg',
-            Sethephu: '/watch.jpg',
-            Annual: '/give.jpg',
-            Youth: '/youthandyoung.jpg',
-          };
-
-          const imageSrc =
-            primaryMap[ceremony.category] || ceremony.imageUrl ||
-            'https://images.unsplash.com/photo-1544427920-c49ccfb85579?w=800&auto=format&fit=crop&q=80';
-
-          return (
-            <div
-              key={ceremony.id}
-              onClick={() => handleOpenCeremony(ceremony)}
-              className="relative rounded-[26px] overflow-hidden shadow-xs border border-slate-100 h-[220px] flex flex-col justify-end p-3.5 group cursor-pointer"
-              style={{
-                backgroundImage: `url('${imageSrc}')`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
+      {/* CALENDAR VIEW: month grid with event days marked */}
+      {viewMode === 'calendar' && (
+        <div className="p-4 space-y-4 flex-1">
+          {/* Month Navigation */}
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => {
+                setCalMonth((m) => (m === 1 ? 12 : m - 1));
+                setSelectedDay(null);
               }}
+              className="p-2 rounded-full bg-[#F1F3F5] text-slate-600 hover:bg-slate-200 transition active:scale-95"
+              aria-label="Previous month"
             >
-              {/* Subtle gradient vignette */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            <h2 className="text-lg font-black text-[#181D20] tracking-tight">
+              {MONTH_NAMES[calMonth - 1]} {APP_YEAR}
+            </h2>
+            <button
+              onClick={() => {
+                setCalMonth((m) => (m === 12 ? 1 : m + 1));
+                setSelectedDay(null);
+              }}
+              className="p-2 rounded-full bg-[#F1F3F5] text-slate-600 hover:bg-slate-200 transition active:scale-95"
+              aria-label="Next month"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
 
-              {/* Minimalist Floating Card Overlay */}
-              <div className="relative z-10 rounded-[20px] bg-slate-900/80 backdrop-blur-md border border-white/15 p-3.5 text-white shadow-lg flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <h3 className="text-sm font-black text-white leading-tight truncate">
-                    {ceremony.title}
-                  </h3>
-                  <p className="text-[11px] text-slate-300 font-medium mt-0.5 truncate">
-                    {ceremony.dateRange} • {ceremony.location.split(',')[0]}
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2 shrink-0">
-                  {ceremony.isRegistered ? (
-                    <span className="text-[11px] font-bold text-emerald-300 px-2 py-1">
-                      Registered
-                    </span>
-                  ) : (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleStartPreRegister(ceremony);
-                      }}
-                      className="px-3.5 py-1.5 rounded-full bg-white text-[#181D20] text-xs font-bold hover:bg-slate-100 transition active:scale-95 shadow-xs"
-                    >
-                      Pre-Register
-                    </button>
-                  )}
-                </div>
+          {/* Weekday Header */}
+          <div className="grid grid-cols-7 gap-1">
+            {WEEKDAYS.map((d) => (
+              <div key={d} className="text-center text-[10px] font-extrabold text-slate-400 uppercase tracking-wider py-1">
+                {d}
               </div>
+            ))}
+          </div>
+
+          {/* Day Grid */}
+          <div className="grid grid-cols-7 gap-1">
+            {calDays.map((day, i) => {
+              if (day === null) return <div key={`blank-${i}`} />;
+              const iso = toISO(calMonth, day);
+              const dayEvents = eventsOnDay(iso);
+              const hasEvents = dayEvents.length > 0;
+              const isToday = iso === APP_TODAY;
+              const isSelected = iso === selectedDay;
+
+              return (
+                <button
+                  key={iso}
+                  disabled={!hasEvents}
+                  onClick={() => setSelectedDay(isSelected ? null : iso)}
+                  className={`relative aspect-square rounded-2xl flex flex-col items-center justify-center text-xs font-bold transition active:scale-95 ${
+                    isSelected
+                      ? 'bg-[#181D20] text-white shadow-md'
+                      : hasEvents
+                        ? 'bg-blue-50 text-[#3F76C5] hover:bg-blue-100'
+                        : isToday
+                          ? 'bg-slate-100 text-slate-900'
+                          : 'text-slate-400'
+                  }`}
+                >
+                  <span>{day}</span>
+                  {hasEvents && (
+                    <span className={`flex gap-0.5 mt-0.5 ${isSelected ? 'opacity-100' : ''}`}>
+                      {dayEvents.slice(0, 3).map((e) => (
+                        <span
+                          key={e.id}
+                          className={`w-1 h-1 rounded-full ${isSelected ? 'bg-white' : 'bg-[#3F76C5]'}`}
+                        />
+                      ))}
+                    </span>
+                  )}
+                  {isToday && !isSelected && (
+                    <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-[#D13138]" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Legend */}
+          <div className="flex items-center gap-4 px-1 text-[10px] font-semibold text-slate-400">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-[#3F76C5]" /> Event day
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-[#D13138]" /> Today
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-[#181D20]" /> Selected
+            </span>
+          </div>
+
+          {/* Events below the grid: selected day first, otherwise the whole month */}
+          {selectedDay ? (
+            <div className="space-y-3.5">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-black text-[#181D20]">
+                  {new Date(`${selectedDay}T00:00:00`).toLocaleDateString('en-ZA', {
+                    weekday: 'long',
+                    day: 'numeric',
+                    month: 'long',
+                  })}
+                </h3>
+                <button
+                  onClick={() => setSelectedDay(null)}
+                  className="text-[10px] font-bold text-[#3F76C5] hover:underline"
+                >
+                  Show whole month
+                </button>
+              </div>
+              {selectedDayEvents.length > 0 ? (
+                selectedDayEvents.map(renderEventCard)
+              ) : (
+                <p className="text-xs text-slate-400 py-4 text-center">
+                  No events on this day.
+                </p>
+              )}
             </div>
-          );
-        })}
-      </div>
+          ) : (
+            <div className="space-y-3.5">
+              <h3 className="text-sm font-black text-[#181D20]">
+                {MONTH_NAMES[calMonth - 1]} Gatherings
+              </h3>
+              {monthEvents(calMonth).length > 0 ? (
+                monthEvents(calMonth).map(renderEventCard)
+              ) : (
+                <p className="text-xs text-slate-400 py-4 text-center">
+                  No Silo events scheduled for {MONTH_NAMES[calMonth - 1]}.
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Ceremony Details Modal */}
       {activeCeremony && !showRegisterModal && (
@@ -243,14 +515,16 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               </div>
             </div>
 
-            <div className="mt-6 pt-4 border-t border-slate-100 flex gap-2">
-              <button
-                onClick={() => handleStartPreRegister(activeCeremony)}
-                className="flex-1 py-3 rounded-2xl bg-[#D13138] text-white font-bold text-sm shadow-md hover:bg-[#b8262d] transition"
-              >
-                {activeCeremony.isRegistered ? 'Update Pre-Registration' : 'Pre-Register Now'}
-              </button>
-            </div>
+            {activeCeremony.isPreRegistrationOpen && activeCeremony.endDate >= APP_TODAY && (
+              <div className="mt-6 pt-4 border-t border-slate-100 flex gap-2">
+                <button
+                  onClick={() => handleStartPreRegister(activeCeremony)}
+                  className="flex-1 py-3 rounded-2xl bg-[#D13138] text-white font-bold text-sm shadow-md hover:bg-[#b8262d] transition"
+                >
+                  {activeCeremony.isRegistered ? 'Update Pre-Registration' : 'Pre-Register Now'}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

@@ -235,7 +235,9 @@ export default function App() {
               {activeTab === 'home' && (
                 <HomeView
                   member={member}
-                  upcomingCeremony={ceremonies[0]}
+                  upcomingCeremony={
+                    ceremonies.find((c) => c.startDate >= '2026-09-03') ?? ceremonies[ceremonies.length - 1]
+                  }
                   announcements={notifications}
                   attendanceCount={attendanceRecords.length}
                   onNavigateTab={navigateToTab}

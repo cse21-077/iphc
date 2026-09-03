@@ -3,6 +3,7 @@ import { MemberProfile } from '../types';
 import { BRANCH_REGION_GROUPS } from '../data/branches';
 import {
   ArrowRight,
+  Check,
   Camera,
   Search,
   UserCheck,
@@ -46,14 +47,12 @@ const COUNTRY_DIALS: CountryDial[] = [
 ];
 
 const SECTION_OPTIONS = [
-  'General Membership',
-  'Section 1',
-  'Section 2',
-  'Section 3',
-  'Section 4 — Baruti & Banna',
-  'Section 5',
-  'Section 6',
-  'Section 7',
+  'BaPriest',
+  'Bo Ntate',
+  'Difate',
+  'Dinaledi',
+  'Badisa',
+  'Ayobaness',
 ];
 
 const MARRIAGE_OPTIONS = ['Single', 'Married', 'Divorced', 'Widowed'];
@@ -79,10 +78,14 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
   // Form State
   const [phone, setPhone] = useState('');
   const [otpCode, setOtpCode] = useState('');
-  const [titlePrefix, setTitlePrefix] = useState<'Ntate' | 'Mme' | 'Rre'>('Ntate');
+  const [titlePrefix, setTitlePrefix] = useState<'Ntate' | 'Mme'>('Ntate');
   const [fullName, setFullName] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
   const [selectedBranch, setSelectedBranch] = useState('');
+
+  // Searchable branch picker state
+  const [branchPickerOpen, setBranchPickerOpen] = useState(false);
+  const [branchQuery, setBranchQuery] = useState('');
 
   // Country code picker state
   const [dialCode, setDialCode] = useState('+27');
@@ -94,7 +97,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
   const [age, setAge] = useState('');
   const [biography, setBiography] = useState('');
   const [qualifications, setQualifications] = useState('');
-  const [section, setSection] = useState('General Membership');
+  const [section, setSection] = useState('BaPriest');
   const [email, setEmail] = useState('');
   const [physicalAddress, setPhysicalAddress] = useState('');
   const [postalAddress, setPostalAddress] = useState('');
@@ -117,6 +120,19 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
           c.dial.includes(countrySearch.trim())
       )
     : COUNTRY_DIALS;
+
+  const branchQueryTrimmed = branchQuery.trim().toLowerCase();
+  const filteredBranchGroups = BRANCH_REGION_GROUPS.map((group) => ({
+    region: group.region,
+    branches: branchQueryTrimmed
+      ? group.branches.filter(
+          (b) =>
+            b.toLowerCase().includes(branchQueryTrimmed) ||
+            group.region.toLowerCase().includes(branchQueryTrimmed)
+        )
+      : group.branches,
+  })).filter((group) => group.branches.length > 0);
+  const totalFilteredBranches = filteredBranchGroups.reduce((sum, g) => sum + g.branches.length, 0);
 
   if (!isOpen) return null;
 
@@ -405,8 +421,8 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
 
               <div>
                 <label className={labelClass}>Honorific Title *</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {(['Ntate', 'Mme', 'Rre'] as const).map((pref) => (
+                <div className="grid grid-cols-2 gap-2">
+                  {(['Ntate', 'Mme'] as const).map((pref) => (
                     <button
                       key={pref}
                       type="button"
@@ -539,25 +555,80 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
                 </div>
                 <div>
                   <label className={labelClass}>Branch *</label>
-                  <select
-                    required
-                    value={selectedBranch}
-                    onChange={(e) => setSelectedBranch(e.target.value)}
-                    className={inputClass}
-                  >
-                    <option value="" disabled>
-                      Select branch...
-                    </option>
-                    {BRANCH_REGION_GROUPS.map((group) => (
-                      <optgroup key={group.region} label={group.region}>
-                        {group.branches.map((b) => (
-                          <option key={`${group.region}-${b}`} value={b}>
-                            {b}
-                          </option>
-                        ))}
-                      </optgroup>
-                    ))}
-                  </select>
+                  {branchPickerOpen ? (
+                    <div className="border border-slate-200 rounded-xl bg-white shadow-lg overflow-hidden animate-in fade-in duration-100">
+                      <div className="relative border-b border-slate-100">
+                        <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="text"
+                          autoFocus
+                          value={branchQuery}
+                          onChange={(e) => setBranchQuery(e.target.value)}
+                          placeholder="Type to filter 171 branches..."
+                          className="w-full pl-8 pr-8 py-2.5 text-xs font-semibold text-slate-900 focus:outline-hidden"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setBranchPickerOpen(false);
+                            setBranchQuery('');
+                          }}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full text-slate-400 hover:text-slate-700 transition"
+                          aria-label="Close branch search"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      <div className="max-h-56 overflow-y-auto">
+                        {totalFilteredBranches > 0 ? (
+                          filteredBranchGroups.map((group) => (
+                            <div key={group.region}>
+                              <div className="px-3 py-1.5 bg-slate-50 text-[9px] font-black text-slate-400 uppercase tracking-widest sticky top-0">
+                                {group.region}
+                              </div>
+                              {group.branches.map((b) => (
+                                <button
+                                  key={`${group.region}-${b}`}
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedBranch(b);
+                                    setBranchPickerOpen(false);
+                                    setBranchQuery('');
+                                  }}
+                                  className={`w-full px-3 py-2 text-left text-xs font-semibold flex items-center justify-between transition ${
+                                    selectedBranch === b
+                                      ? 'bg-slate-900 text-white'
+                                      : 'text-slate-700 hover:bg-slate-100'
+                                  }`}
+                                >
+                                  <span>{b}</span>
+                                  {selectedBranch === b && <Check className="w-3.5 h-3.5 text-white shrink-0" />}
+                                </button>
+                              ))}
+                            </div>
+                          ))
+                        ) : (
+                          <div className="p-3 text-xs text-slate-400 text-center">
+                            No branches match "{branchQuery}"
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setBranchPickerOpen(true)}
+                      className={`w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold flex items-center justify-between gap-2 transition text-left ${
+                        selectedBranch
+                          ? 'text-slate-900'
+                          : 'text-slate-400'
+                      } hover:bg-slate-100 focus:outline-hidden focus:ring-2 focus:ring-[#181D20]`}
+                    >
+                      <span className="truncate">{selectedBranch || 'Search & select your branch...'}</span>
+                      <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    </button>
+                  )}
                 </div>
               </div>
 
