@@ -29,8 +29,26 @@ import { NotificationsModal } from './components/NotificationsModal';
 import { MembershipCard } from './components/MembershipCard';
 import { RegistrationAuthModal } from './components/RegistrationAuthModal';
 import PWAInstallOverlay from './components/PWAInstallOverlay';
+import { AdminDashboard } from './components/admin/AdminDashboard';
 
 export default function App() {
+  // Admin route: /admin (path) or #/admin (hash) renders the leadership dashboard
+  const isAdminLocation = () =>
+    window.location.hash.startsWith('#/admin') ||
+    window.location.pathname.replace(/\/+$/, '').endsWith('/admin');
+
+  const [isAdminRoute, setIsAdminRoute] = useState(isAdminLocation);
+
+  useEffect(() => {
+    const onLocationChange = () => setIsAdminRoute(isAdminLocation());
+    window.addEventListener('hashchange', onLocationChange);
+    window.addEventListener('popstate', onLocationChange);
+    return () => {
+      window.removeEventListener('hashchange', onLocationChange);
+      window.removeEventListener('popstate', onLocationChange);
+    };
+  }, []);
+
   // Navigation State
   const [activeTab, setActiveTab] = useState<'home' | 'calendar' | 'scan' | 'flg' | 'profile'>('home');
 
@@ -210,6 +228,23 @@ export default function App() {
     setIsAttendanceOpen(false);
     setIsMediaOpen(false);
   };
+
+  // Leadership dashboard route — rendered instead of the member app shell
+  if (isAdminRoute) {
+    return (
+      <AdminDashboard
+        liveMembers={registeredMembersList}
+        onExit={() => {
+          if (window.location.pathname.replace(/\/+$/, '').endsWith('/admin')) {
+            window.location.pathname = '/';
+          } else {
+            window.location.hash = '';
+          }
+          window.scrollTo({ top: 0 });
+        }}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] flex justify-center text-[#1A1A1A] selection:bg-[#3F76C5] selection:text-white">
