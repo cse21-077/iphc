@@ -21,16 +21,16 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="max-w-md mx-auto px-4 h-14 flex items-center justify-between">
         {/* Brand Logo & Name */}
         <div className="flex items-center gap-2.5">
-          <div className="relative w-8 h-8 rounded-xl overflow-hidden border border-gray-200 bg-[#0A2A52] flex items-center justify-center shadow-xs">
+          <div className="relative w-8 h-8 rounded-xl overflow-hidden border border-[#3F76C5]/25 bg-white flex items-center justify-center shadow-xs">
             <img
               src="/pwa-192x192.png"
               alt="IPHC Emblem"
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain"
             />
           </div>
           <div>
             <div className="flex items-center gap-1.5">
-              <span className="font-bold text-base tracking-tight text-[#1A1A1A] leading-none">
+              <span className="font-bold text-base tracking-tight text-[#0A2A52] leading-none">
                 MMUSO
               </span>
               <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold tracking-wider uppercase bg-[#D13138] text-white">

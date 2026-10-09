@@ -1,0 +1,107 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum UserRole {
+  MEMBER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum RegistrationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id           String      @id @default(cuid())
+  phone        String      @unique
+  email        String?     @unique
+  passwordHash String
+  role         UserRole    @default(MEMBER)
+  status       UserStatus  @default(ACTIVE)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  registration Registration?
+  sessions     Session[]
+
+  @@index([role, status])
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@map("sessions")
+}
+
+model Registration {
+  id              String             @id @default(cuid())
+  userId          String             @unique
+  title           String
+  fullName        String
+  branch          String
+  section         String
+  age             Int?
+  biography       String?
+  qualifications  String?
+  photoUrl        String?
+  physicalAddress String?
+  postalAddress   String?
+  marriageStatus  String?
+  status          RegistrationStatus @default(PENDING)
+  membershipNumber String?           @unique
+  baptismNumber   String?
+  qrToken         String?            @unique
+  reviewedAt      DateTime?
+  reviewedById    String?
+  submittedAt     DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nextOfKin       NextOfKin?
+  familyMembers   FamilyMember[]
+
+  @@index([status, submittedAt])
+  @@index([branch, section])
+  @@map("registrations")
+}
+
+model NextOfKin {
+  id             String       @id @default(cuid())
+  registrationId String       @unique
+  fullName       String
+  relation       String
+  phone          String
+  registration   Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+
+  @@map("next_of_kin")
+}
+
+model FamilyMember {
+  id             String       @id @default(cuid())
+  registrationId String
+  fullName       String
+  relation       String
+  createdAt      DateTime     @default(now())
+  registration   Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+
+  @@index([registrationId])
+  @@map("family_members")
+}

@@ -29,26 +29,9 @@ import { NotificationsModal } from './components/NotificationsModal';
 import { MembershipCard } from './components/MembershipCard';
 import { RegistrationAuthModal } from './components/RegistrationAuthModal';
 import PWAInstallOverlay from './components/PWAInstallOverlay';
-import { AdminDashboard } from './components/admin/AdminDashboard';
+import { getCurrentUser, login, logout, register, RegistrationPayload } from './api';
 
 export default function App() {
-  // Admin route: /admin (path) or #/admin (hash) renders the leadership dashboard
-  const isAdminLocation = () =>
-    window.location.hash.startsWith('#/admin') ||
-    window.location.pathname.replace(/\/+$/, '').endsWith('/admin');
-
-  const [isAdminRoute, setIsAdminRoute] = useState(isAdminLocation);
-
-  useEffect(() => {
-    const onLocationChange = () => setIsAdminRoute(isAdminLocation());
-    window.addEventListener('hashchange', onLocationChange);
-    window.addEventListener('popstate', onLocationChange);
-    return () => {
-      window.removeEventListener('hashchange', onLocationChange);
-      window.removeEventListener('popstate', onLocationChange);
-    };
-  }, []);
-
   // Navigation State
   const [activeTab, setActiveTab] = useState<'home' | 'calendar' | 'scan' | 'flg' | 'profile'>('home');
 
@@ -58,7 +41,7 @@ export default function App() {
   const [isMediaOpen, setIsMediaOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isMembershipPassOpen, setIsMembershipPassOpen] = useState(false);
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(true);
   const [paymentsInitialCategory, setPaymentsInitialCategory] = useState<string | null>(null);
 
   // Splash screen: show the IPHC emblem on launch, then fade out smoothly
@@ -75,23 +58,7 @@ export default function App() {
   }, []);
 
   // Persistent Domain States with LocalStorage backup
-  const [member, setMember] = useState<MemberProfile>(() => {
-    const saved = localStorage.getItem('iphc_mmuso_member');
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      // Ensure photo points to public asset /tumelolekolwane.jpg for Tumelo
-      if (parsed.id === 'mem_001' || parsed.name.includes('Tumelo')) {
-        parsed.photo = '/tumelolekolwane.jpg';
-      }
-      return parsed;
-    }
-    return initialMemberProfile;
-  });
-
-  const [registeredMembersList, setRegisteredMembersList] = useState<MemberProfile[]>(() => {
-    const saved = localStorage.getItem('iphc_mmuso_all_members');
-    return saved ? JSON.parse(saved) : [initialMemberProfile];
-  });
+  const [member, setMember] = useState<MemberProfile>(initialMemberProfile);
 
   const [ceremonies, setCeremonies] = useState<Ceremony[]>(() => {
     const saved = localStorage.getItem('iphc_mmuso_ceremonies');
@@ -124,8 +91,19 @@ export default function App() {
   }, [member]);
 
   useEffect(() => {
-    localStorage.setItem('iphc_mmuso_all_members', JSON.stringify(registeredMembersList));
-  }, [registeredMembersList]);
+    let active = true;
+    getCurrentUser()
+      .then(({ member: currentMember }) => {
+        if (active && currentMember) {
+          setMember(currentMember);
+          setIsAuthModalOpen(false);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     localStorage.setItem('iphc_mmuso_ceremonies', JSON.stringify(ceremonies));
@@ -148,31 +126,25 @@ export default function App() {
   }, [notifications]);
 
   // Auth Handlers
-  const handleLoginWithPhone = (inputPhone: string): boolean => {
-    const cleaned = inputPhone.replace(/\s+/g, '');
-    const found = registeredMembersList.find((m) => m.phone.replace(/\s+/g, '') === cleaned);
-    if (found) {
-      setMember(found);
-      setActiveTab('home');
-      return true;
-    }
-    // Fallback search initial profile
-    if (initialMemberProfile.phone.replace(/\s+/g, '') === cleaned) {
-      setMember(initialMemberProfile);
-      setActiveTab('home');
-      return true;
-    }
-    return false;
-  };
-
-  const handleRegisterNewMember = (newMember: MemberProfile) => {
-    setRegisteredMembersList((prev) => [newMember, ...prev]);
-    setMember(newMember);
+  const handleLoginWithPhone = async (inputPhone: string, password: string) => {
+    const result = await login(inputPhone, password);
+    if (result.member) setMember(result.member);
     setActiveTab('home');
   };
 
-  const handleSignOut = () => {
-    setIsAuthModalOpen(true);
+  const handleRegisterNewMember = async (registration: RegistrationPayload) => {
+    const result = await register(registration);
+    if (result.member) setMember(result.member);
+    setActiveTab('home');
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await logout();
+    } finally {
+      setMember(initialMemberProfile);
+      setIsAuthModalOpen(true);
+    }
   };
 
   // Handlers
@@ -228,23 +200,6 @@ export default function App() {
     setIsAttendanceOpen(false);
     setIsMediaOpen(false);
   };
-
-  // Leadership dashboard route — rendered instead of the member app shell
-  if (isAdminRoute) {
-    return (
-      <AdminDashboard
-        liveMembers={registeredMembersList}
-        onExit={() => {
-          if (window.location.pathname.replace(/\/+$/, '').endsWith('/admin')) {
-            window.location.pathname = '/';
-          } else {
-            window.location.hash = '';
-          }
-          window.scrollTo({ top: 0 });
-        }}
-      />
-    );
-  }
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] flex justify-center text-[#1A1A1A] selection:bg-[#3F76C5] selection:text-white">
@@ -387,7 +342,6 @@ export default function App() {
           onClose={() => setIsAuthModalOpen(false)}
           onLogin={handleLoginWithPhone}
           onRegisterComplete={handleRegisterNewMember}
-          currentMember={member}
         />
         {/* PWA Install Overlay: blocks web view until app is installed */}
         <PWAInstallOverlay />

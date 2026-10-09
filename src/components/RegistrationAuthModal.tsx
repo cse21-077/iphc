@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MemberProfile } from '../types';
+import { RegistrationPayload } from '../api';
 import { BRANCH_REGION_GROUPS } from '../data/branches';
 import {
   ArrowRight,
@@ -24,9 +24,8 @@ import {
 interface RegistrationAuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onLogin: (phone: string) => boolean; // returns true if found
-  onRegisterComplete: (newMember: MemberProfile) => void;
-  currentMember: MemberProfile;
+  onLogin: (phone: string, password: string) => Promise<void>;
+  onRegisterComplete: (registration: RegistrationPayload) => Promise<void>;
 }
 
 interface CountryDial {
@@ -60,7 +59,7 @@ const MARRIAGE_OPTIONS = ['Single', 'Married', 'Divorced', 'Widowed'];
 const KIN_RELATIONS = ['Spouse', 'Parent', 'Child', 'Sibling', 'Grandparent', 'Other Relative'];
 
 const inputClass =
-  'w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-[#181D20]';
+  'w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-[#3F76C5]';
 const labelClass =
   'text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1';
 const subHeadingClass =
@@ -71,13 +70,12 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
   onClose,
   onLogin,
   onRegisterComplete,
-  currentMember,
 }) => {
-  const [mode, setMode] = useState<'welcome' | 'phone' | 'otp' | 'about' | 'review' | 'confirmation' | 'direct_login'>('welcome');
+  const [mode, setMode] = useState<'welcome' | 'phone' | 'about' | 'review' | 'confirmation' | 'direct_login'>('welcome');
 
   // Form State
   const [phone, setPhone] = useState('');
-  const [otpCode, setOtpCode] = useState('');
+  const [password, setPassword] = useState('');
   const [titlePrefix, setTitlePrefix] = useState<'Ntate' | 'Mme'>('Ntate');
   const [fullName, setFullName] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
@@ -108,8 +106,11 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
   const [familyMembers, setFamilyMembers] = useState<Array<{ name: string; relation: string }>>([]);
 
   // Direct login state
-  const [loginPhoneInput, setLoginPhoneInput] = useState('+27 82 459 1083');
+  const [loginPhoneInput, setLoginPhoneInput] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
+  const [formError, setFormError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fullPhone = `${dialCode} ${localNumber}`.trim();
   const selectedCountry = COUNTRY_DIALS.find((c) => c.dial === dialCode) ?? COUNTRY_DIALS[0];
@@ -149,14 +150,9 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
 
   const handleSendCode = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!localNumber.trim()) return;
+    if (!localNumber.trim() || password.length < 8) return;
     setPhone(fullPhone);
-    setOtpCode('7492'); // Pre-fill mock OTP
-    setMode('otp');
-  };
-
-  const handleVerifyOtp = (e: React.FormEvent) => {
-    e.preventDefault();
+    setFormError('');
     setMode('about');
   };
 
@@ -164,54 +160,51 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
     setFamilyMembers((prev) => prev.map((m, i) => (i === index ? { ...m, [field]: value } : m)));
   };
 
-  const handleCompleteRegistration = () => {
-    const randomId = Math.floor(100000 + Math.random() * 900000);
-    const finalBranch = selectedBranch || 'Silo';
-    const finalPhone = phone || fullPhone || '+27 80 000 0000';
-    const newMember: MemberProfile = {
-      id: `mem_new_${Date.now()}`,
-      name: fullName.trim() || 'New Church Member',
-      title: titlePrefix,
-      membershipNumber: `IPHC-MM-${randomId}`,
-      branch: finalBranch,
-      section,
-      baptismNumber: `PENDING-${randomId}`,
-      photo:
-        photoUrl.trim() ||
-        'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300&auto=format&fit=crop&q=80',
-      phone: finalPhone,
-      email: email.trim() || `${fullName.toLowerCase().replace(/\s+/g, '.') || 'member'}@member.iphc.org`,
-      address: physicalAddress.trim() || `Branch Member, ${finalBranch}`,
-      postalAddress: postalAddress.trim() || undefined,
-      age: age.trim() ? parseInt(age, 10) : undefined,
-      biography: biography.trim() || undefined,
-      qualifications: qualifications.trim() || undefined,
-      nextOfKin: {
-        name: kinName.trim() || 'To be updated',
-        relation: kinRelation,
-        phone: kinPhone.trim() || finalPhone,
-      },
-      marriageStatus,
-      familyMembers: familyMembers
-        .filter((m) => m.name.trim())
-        .map((m, i) => ({ id: `fam_new_${i + 1}`, name: m.name.trim(), relation: m.relation.trim() || 'Family' })),
-      joinYear: new Date().getFullYear(),
-      qrToken: `IPHC-PENDING-${randomId}-${finalBranch.toUpperCase().slice(0, 4)}`,
-      isPending: true,
-    };
-
-    onRegisterComplete(newMember);
-    setMode('confirmation');
+  const handleCompleteRegistration = async () => {
+    setIsSubmitting(true);
+    setFormError('');
+    try {
+      await onRegisterComplete({
+        phone: phone || fullPhone,
+        email: email.trim() || undefined,
+        password,
+        title: titlePrefix,
+        fullName: fullName.trim(),
+        branch: selectedBranch,
+        section,
+        age: age.trim() ? parseInt(age, 10) : undefined,
+        biography: biography.trim() || undefined,
+        qualifications: qualifications.trim() || undefined,
+        photoUrl: photoUrl.trim() || undefined,
+        physicalAddress: physicalAddress.trim() || undefined,
+        postalAddress: postalAddress.trim() || undefined,
+        marriageStatus,
+        nextOfKin: kinName.trim()
+          ? { fullName: kinName.trim(), relation: kinRelation, phone: kinPhone.trim() || phone || fullPhone }
+          : undefined,
+        familyMembers: familyMembers
+          .filter((member) => member.name.trim())
+          .map((member) => ({ fullName: member.name.trim(), relation: member.relation.trim() || 'Family' })),
+      });
+      setMode('confirmation');
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : 'Registration could not be completed.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleDirectLoginSubmit = (e: React.FormEvent) => {
+  const handleDirectLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
-    const success = onLogin(loginPhoneInput.trim());
-    if (success) {
+    setIsSubmitting(true);
+    try {
+      await onLogin(loginPhoneInput.trim(), loginPassword);
       onClose();
-    } else {
-      setLoginError('No existing account found with this phone number. Please click Register.');
+    } catch (error) {
+      setLoginError(error instanceof Error ? error.message : 'Unable to sign in.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -289,13 +282,13 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
         {/* SCREEN 1: Welcome */}
         {mode === 'welcome' && (
           <div className="py-4 space-y-6 text-center animate-in fade-in duration-150">
-            <div className="w-16 h-16 rounded-full bg-slate-900 text-white mx-auto flex items-center justify-center shadow-lg">
-              <Building2 className="w-8 h-8 text-blue-400" />
+            <div className="w-20 h-20 mx-auto flex items-center justify-center">
+              <img src="/App%20logo.png" alt="IPHC logo" className="w-full h-full object-contain" />
             </div>
 
             <div>
               <h2 className="text-2xl font-black text-[#181D20] tracking-tight">
-                Join International Pentecost Holiness Church
+                International Pentecost Holiness Church
               </h2>
               <p className="text-xs text-slate-500 font-medium mt-2 leading-relaxed px-2">
                 Get your digital membership card, check in at services, and stay connected with your branch.
@@ -331,13 +324,13 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
             <div>
               <h2 className="text-xl font-black text-[#181D20]">Enter Phone Number</h2>
               <p className="text-xs text-slate-500 mt-1">
-                We'll send a 4-digit code to verify your phone. No passwords needed.
+                Create a secure account with your phone number and a password.
               </p>
             </div>
 
             <form onSubmit={handleSendCode} className="space-y-4 pt-2">
               <div>
-                <label className={labelClass}>Mobile Number *</label>
+                  <label className={labelClass}>Mobile Number *</label>
                 <div className="flex gap-2">
                   <CountryPicker idPrefix="reg" />
                   <input
@@ -351,40 +344,16 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
                 </div>
               </div>
 
-              <button
-                type="submit"
-                className="w-full py-3.5 rounded-full bg-[#181D20] text-white font-extrabold text-sm hover:bg-black transition shadow-md active:scale-98"
-              >
-                Send Code via SMS
-              </button>
-            </form>
-          </div>
-        )}
-
-        {/* SCREEN 2B: OTP Code Entry */}
-        {mode === 'otp' && (
-          <div className="py-4 space-y-5 animate-in fade-in duration-150">
-            <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
-              <span>Verification</span>
-            </div>
-
-            <div>
-              <h2 className="text-xl font-black text-[#181D20]">Verify 4-Digit Code</h2>
-              <p className="text-xs text-slate-500 mt-1">
-                Code sent to <strong className="text-slate-900">{phone}</strong>
-              </p>
-            </div>
-
-            <form onSubmit={handleVerifyOtp} className="space-y-4 pt-2">
               <div>
+                <label className={labelClass}>Password (at least 8 characters) *</label>
                 <input
-                  type="text"
-                  maxLength={6}
+                  type="password"
                   required
-                  value={otpCode}
-                  onChange={(e) => setOtpCode(e.target.value)}
-                  placeholder="7492"
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-2xl font-mono font-black text-slate-900 text-center tracking-widest focus:outline-hidden focus:ring-2 focus:ring-[#181D20]"
+                  minLength={8}
+                  autoComplete="new-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className={inputClass}
                 />
               </div>
 
@@ -392,7 +361,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
                 type="submit"
                 className="w-full py-3.5 rounded-full bg-[#181D20] text-white font-extrabold text-sm hover:bg-black transition shadow-md active:scale-98"
               >
-                Verify & Continue
+                Continue
               </button>
             </form>
           </div>
@@ -765,7 +734,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
 
             <button
               type="button"
-              disabled={!fullName.trim()}
+                disabled={!fullName.trim() || !selectedBranch}
               onClick={() => setMode('review')}
               className="w-full py-3.5 rounded-full bg-[#181D20] text-white font-extrabold text-sm hover:bg-black transition shadow-md active:scale-98 disabled:opacity-50 mt-2"
             >
@@ -857,11 +826,18 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
               )}
             </div>
 
+            {formError && (
+              <p className="text-xs text-red-600 font-semibold bg-red-50 p-2.5 rounded-xl border border-red-100">
+                {formError}
+              </p>
+            )}
+
             <button
               onClick={handleCompleteRegistration}
-              className="w-full py-3.5 rounded-full bg-[#181D20] text-white font-extrabold text-sm hover:bg-black transition shadow-lg active:scale-98"
+              disabled={isSubmitting}
+              className="w-full py-3.5 rounded-full bg-[#181D20] text-white font-extrabold text-sm hover:bg-black transition shadow-lg active:scale-98 disabled:opacity-50"
             >
-              Submit Registration
+              {isSubmitting ? 'Submitting…' : 'Submit Registration'}
             </button>
           </div>
         )}
@@ -913,6 +889,18 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
                 />
               </div>
 
+              <div>
+                <label className={labelClass}>Password *</label>
+                <input
+                  type="password"
+                  required
+                  autoComplete="current-password"
+                  value={loginPassword}
+                  onChange={(e) => setLoginPassword(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-[#181D20]"
+                />
+              </div>
+
               {loginError && (
                 <p className="text-xs text-red-600 font-semibold bg-red-50 p-2.5 rounded-xl border border-red-100">
                   {loginError}
@@ -921,15 +909,11 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
 
               <button
                 type="submit"
-                className="w-full py-3.5 rounded-full bg-[#181D20] text-white font-extrabold text-sm hover:bg-black transition shadow-md active:scale-98"
+                disabled={isSubmitting}
+                className="w-full py-3.5 rounded-full bg-[#181D20] text-white font-extrabold text-sm hover:bg-black transition shadow-md active:scale-98 disabled:opacity-50"
               >
-                Log In
+                {isSubmitting ? 'Signing in…' : 'Log In'}
               </button>
-
-              <div className="p-3 rounded-2xl bg-slate-50 text-[11px] text-slate-500 border border-slate-100">
-                <span className="font-bold text-slate-800 block mb-0.5">Pre-configured Demo Login:</span>
-                <code>+27 82 459 1083</code> (Tumelo Lekolwane)
-              </div>
             </form>
           </div>
         )}

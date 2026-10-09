@@ -57,10 +57,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
             <Sun className="w-3.5 h-3.5 text-amber-500" />
             <span>Good Day • Kgotso</span>
           </div>
-          <h1 className="text-2xl font-black text-[#181D20] tracking-tight">
+          <h1 className="text-2xl font-black text-[#0A2A52] tracking-tight">
             {member.title} {member.name}
           </h1>
-          <p className="text-xs text-slate-400 font-medium mt-0.5">
+          <p className="text-xs text-[#3F76C5] font-semibold mt-0.5">
             {member.branch}
           </p>
         </div>
@@ -68,11 +68,11 @@ export const HomeView: React.FC<HomeViewProps> = ({
         <button
           id="home-notice-badge"
           onClick={onOpenNotifications}
-          className="mt-1 p-2 text-[#181D20] hover:text-black active:scale-95 transition relative"
+          className="mt-1 p-2 text-[#0A2A52] hover:text-[#3F76C5] active:scale-95 transition relative"
           title="Announcements & Notifications"
           aria-label="View Announcements"
         >
-          <Bell className="w-5 h-5 text-[#181D20] stroke-[2]" />
+          <Bell className="w-5 h-5 text-[#0A2A52] stroke-[2]" />
           {announcements.some((n) => !n.isRead) && (
             <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#D13138] ring-2 ring-white" />
           )}
@@ -86,7 +86,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
         className={`relative rounded-[24px] text-white p-5 overflow-hidden cursor-pointer active:scale-[0.99] transition-all duration-150 group border select-none ${
           member.isPending
             ? 'bg-slate-800/90 border-slate-700/80 shadow-md grayscale-[30%]'
-            : 'bg-gradient-to-br from-[#1E40AF] via-[#1D4ED8] to-[#172554] shadow-[0_12px_28px_rgba(29,78,216,0.25)] border-blue-400/20'
+            : 'bg-gradient-to-br from-[#0A2A52] via-[#164A86] to-[#1D4ED8] shadow-[0_12px_28px_rgba(10,42,82,0.28)] border-blue-300/25'
         }`}
       >
         {/* Soft atmospheric gradient accents */}
@@ -258,8 +258,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
       </div>
 
       {/* Daily Spiritual Thought & Scripture Reading (Clean, serene styling) */}
-      <div className="bg-white rounded-[24px] p-5 border border-slate-100 shadow-sm">
-        <div className="flex items-center gap-2 text-[#3E655D] mb-2">
+      <div className="bg-white rounded-[24px] p-5 border border-[#3F76C5]/15 shadow-sm">
+      <div className="flex items-center gap-2 text-[#0A2A52] mb-2">
           <BookOpen className="w-4 h-4 stroke-[2.2]" />
           <span className="text-[11px] font-black uppercase tracking-wider">
             Daily Scripture Reflection

@@ -390,19 +390,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       {/* Account Session Actions */}
       <div className="bg-white rounded-[26px] p-4 border border-slate-200/90 shadow-xs space-y-2">
         <button
-          onClick={() => {
-            window.location.hash = '#/admin';
-          }}
-          className="w-full py-3 px-4 rounded-2xl bg-[#0A2A52] text-white hover:bg-[#123a6b] font-bold text-xs flex items-center justify-between transition active:scale-98"
-        >
-          <div className="flex items-center gap-2.5">
-            <LayoutDashboard className="w-4 h-4 text-blue-200" />
-            <span>Administration Dashboard</span>
-          </div>
-          <ChevronRight className="w-4 h-4 text-blue-200" />
-        </button>
-
-        <button
           onClick={onOpenAuthModal}
           className="w-full py-3 px-4 rounded-2xl bg-slate-50 border border-slate-200/80 hover:bg-slate-100/80 text-slate-800 font-bold text-xs flex items-center justify-between transition active:scale-98"
         >
