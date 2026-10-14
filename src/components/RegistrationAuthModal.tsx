@@ -72,6 +72,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
   const [selectedBranch, setSelectedBranch] = useState('');
   const [registrationOptions, setRegistrationOptions] = useState<RegistrationOptions | null>(null);
   const [optionsError, setOptionsError] = useState('');
+  const [isLoadingOptions, setIsLoadingOptions] = useState(false);
 
   // Searchable branch picker state
   const [branchPickerOpen, setBranchPickerOpen] = useState(false);
@@ -121,18 +122,22 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
   useEffect(() => {
     if (!isOpen) return;
     let active = true;
+    setIsLoadingOptions(true);
+    setOptionsError('');
     getRegistrationOptions()
       .then((options) => {
         if (!active) return;
         setRegistrationOptions(options);
-        setSection((current) => options.sections.includes(current) ? current : options.sections[0] ?? '');
+        setSection((current) => options.sections.includes(current) ? current : '');
         setSelectedBranch((current) => options.branches.includes(current) ? current : '');
-        setOptionsError('');
       })
       .catch((error: unknown) => {
         if (active) {
           setOptionsError(error instanceof Error ? error.message : 'Could not load active branches and sections.');
         }
+      })
+      .finally(() => {
+        if (active) setIsLoadingOptions(false);
       });
     return () => {
       active = false;
@@ -314,9 +319,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
               >
                 Already a member? <span className="underline text-slate-900">Log in</span>
               </button>
-              <p className="px-3 text-[11px] leading-relaxed text-slate-400">
-                Members and security staff sign in here. Security accounts open the gate check-in app automatically.
-              </p>
+             
             </div>
           </div>
         )}
@@ -533,9 +536,12 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
                   <select
                     value={section}
                     onChange={(e) => setSection(e.target.value)}
-                    disabled={!registrationOptions?.sections.length}
+                    disabled={isLoadingOptions || !registrationOptions?.sections.length}
                     className={inputClass}
                   >
+                    <option value="">
+                      {isLoadingOptions ? 'Loading sections...' : 'Select an active section...'}
+                    </option>
                     {registrationOptions?.sections.map((s) => (
                       <option key={s} value={s}>
                         {s}
@@ -603,7 +609,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
                   ) : (
                     <button
                       type="button"
-                      disabled={!registrationOptions?.branches.length}
+                      disabled={isLoadingOptions || !registrationOptions?.branches.length}
                       onClick={() => setBranchPickerOpen(true)}
                       className={`w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold flex items-center justify-between gap-2 transition text-left ${
                         selectedBranch
@@ -611,7 +617,9 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
                           : 'text-slate-400'
                       } hover:bg-slate-100 focus:outline-hidden focus:ring-2 focus:ring-[#3F76C5]`}
                     >
-                      <span className="truncate">{selectedBranch || 'Search & select your branch...'}</span>
+                      <span className="truncate">
+                        {selectedBranch || (isLoadingOptions ? 'Loading branches...' : 'Search & select your branch...')}
+                      </span>
                       <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                     </button>
                   )}
@@ -745,7 +753,14 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
 
             <button
               type="button"
-                disabled={!fullName.trim() || !selectedBranch || !section}
+                disabled={
+                  !fullName.trim() ||
+                  !selectedBranch ||
+                  !section ||
+                  isLoadingOptions ||
+                  !registrationOptions?.branches.length ||
+                  !registrationOptions.sections.length
+                }
               onClick={() => setMode('review')}
               className="w-full py-3.5 rounded-full bg-[#0A2A52] text-white font-extrabold text-sm hover:bg-[#164A86] transition shadow-md active:scale-98 disabled:opacity-50 mt-2"
             >
