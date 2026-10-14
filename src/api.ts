@@ -2,7 +2,7 @@ import { MemberProfile } from './types';
 
 export interface RegistrationPayload {
   phone: string;
-  email?: string;
+  email: string;
   password: string;
   title: string;
   fullName: string;
@@ -21,16 +21,46 @@ export interface RegistrationPayload {
 
 export interface AuthResponse {
   member: MemberProfile | null;
-  role: 'MEMBER' | 'ADMIN';
+  role: 'MEMBER' | 'ADMIN' | 'SECURITY';
+  securityProfile?: SecurityProfile | null;
   phone?: string;
   email?: string | null;
+}
+
+export interface RegistrationOptions {
+  branches: string[];
+  sections: string[];
+}
+
+export interface SecurityProfile {
+  name: string;
+  email: string;
+  role: 'SECURITY';
+  branch: string | null;
+}
+
+export interface SecurityEvent {
+  id: string;
+  title: string;
+  category: string;
+  location: string;
+  startsAt: string;
+  branch: string | null;
+}
+
+export interface SecurityCheckIn {
+  attendanceId: string;
+  memberName: string;
+  membershipNumber: string;
+  eventName: string;
+  checkedInAt: string;
 }
 
 export interface AdminUser {
   id: string;
   phone: string;
   email: string | null;
-  role: 'MEMBER' | 'ADMIN';
+  role: 'MEMBER' | 'ADMIN' | 'SECURITY';
   status: 'ACTIVE' | 'DISABLED';
   createdAt: string;
   member: MemberProfile | null;
@@ -51,8 +81,18 @@ const request = async <T>(path: string, init: RequestInit = {}): Promise<T> => {
 
 export const getCurrentUser = () => request<AuthResponse>('/api/auth/me');
 
-export const login = (phone: string, password: string) =>
-  request<AuthResponse>('/api/auth/login', { method: 'POST', body: JSON.stringify({ phone, password }) });
+export const getRegistrationOptions = () => request<RegistrationOptions>('/api/auth/options');
+
+export const getSecurityEvents = () => request<SecurityEvent[]>('/api/security/events');
+
+export const recordSecurityCheckIn = (eventId: string, membershipNumber: string) =>
+  request<SecurityCheckIn>('/api/security/attendance', {
+    method: 'POST',
+    body: JSON.stringify({ eventId, membershipNumber }),
+  });
+
+export const login = (email: string, password: string) =>
+  request<AuthResponse>('/api/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
 
 export const register = (payload: RegistrationPayload) =>
   request<AuthResponse>('/api/auth/register', { method: 'POST', body: JSON.stringify(payload) });

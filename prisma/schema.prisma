@@ -8,100 +8,214 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-enum UserRole {
+model app_users {
+  id            String         @id @db.Uuid
+  auth_user_id  String         @unique @db.Uuid
+  email         String         @unique
+  display_name  String
+  is_active     Boolean        @default(true)
+  created_at    DateTime       @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime       @db.Timestamptz(6)
+  audit_log     audit_log[]
+  branch_admins branch_admins?
+  members       members?
+  user_roles    user_roles[]
+}
+
+model attendance {
+  id            String   @id @db.Uuid
+  member_id     String   @db.Uuid
+  branch_id     String   @db.Uuid
+  event_id      String?  @db.Uuid
+  service_name  String
+  location      String
+  checked_in_at DateTime @default(now()) @db.Timestamptz(6)
+  method        String   @default("manual")
+  recorded_by   String?  @db.Uuid
+  branches      branches @relation(fields: [branch_id], references: [id])
+  events        events?  @relation(fields: [event_id], references: [id])
+  members       members  @relation(fields: [member_id], references: [id])
+
+  @@index([branch_id, checked_in_at(sort: Desc)])
+  @@index([member_id, checked_in_at(sort: Desc)])
+}
+
+model audit_log {
+  id          String      @id @db.Uuid
+  actor_id    String?     @db.Uuid
+  action      AuditAction
+  entity_type String
+  entity_id   String?     @db.Uuid
+  details     Json        @default("{}")
+  created_at  DateTime    @default(now()) @db.Timestamptz(6)
+  app_users   app_users?  @relation(fields: [actor_id], references: [id])
+
+  @@index([created_at(sort: Desc)])
+  @@index([entity_type, entity_id])
+}
+
+model branch_admins {
+  id          String    @id @db.Uuid
+  user_id     String    @unique @db.Uuid
+  branch_id   String    @db.Uuid
+  assigned_by String?   @db.Uuid
+  assigned_at DateTime  @default(now()) @db.Timestamptz(6)
+  branches    branches  @relation(fields: [branch_id], references: [id], onDelete: Cascade)
+  app_users   app_users @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([branch_id])
+}
+
+model branch_membership_counters {
+  branch_id  String   @id @db.Uuid
+  next_value Int      @default(1)
+  branches   branches @relation(fields: [branch_id], references: [id], onDelete: Cascade)
+}
+
+model branches {
+  id                         String                      @id @db.Uuid
+  name                       String                      @unique
+  code                       String                      @unique @db.VarChar(8)
+  is_active                  Boolean                     @default(true)
+  created_at                 DateTime                    @default(now()) @db.Timestamptz(6)
+  updated_at                 DateTime                    @db.Timestamptz(6)
+  attendance                 attendance[]
+  branch_admins              branch_admins[]
+  branch_membership_counters branch_membership_counters?
+  events                     events[]
+  members                    members[]
+}
+
+model events {
+  id           String       @id @db.Uuid
+  branch_id    String?      @db.Uuid
+  title        String
+  category     String
+  description  String       @default("")
+  location     String
+  image_path   String?
+  starts_at    DateTime     @db.Timestamptz(6)
+  ends_at      DateTime?    @db.Timestamptz(6)
+  is_published Boolean      @default(false)
+  archived_at  DateTime?    @db.Timestamptz(6)
+  created_by   String?      @db.Uuid
+  created_at   DateTime     @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime     @db.Timestamptz(6)
+  attendance   attendance[]
+  branches     branches?    @relation(fields: [branch_id], references: [id])
+
+  @@index([starts_at, is_published])
+}
+
+model member_relationships {
+  id                                                String                 @id @db.Uuid
+  member_id                                         String                 @db.Uuid
+  related_id                                        String                 @db.Uuid
+  relationship                                      FamilyRelationshipType
+  created_at                                        DateTime               @default(now()) @db.Timestamptz(6)
+  members_member_relationships_member_idTomembers   members                @relation("member_relationships_member_idTomembers", fields: [member_id], references: [id], onDelete: Cascade)
+  members_member_relationships_related_idTomembers  members                @relation("member_relationships_related_idTomembers", fields: [related_id], references: [id], onDelete: Cascade)
+
+  @@unique([member_id, related_id])
+  @@index([related_id])
+}
+
+model members {
+  id                                                            String                 @id @db.Uuid
+  user_id                                                       String?                @unique @db.Uuid
+  branch_id                                                     String                 @db.Uuid
+  section_id                                                    String                 @db.Uuid
+  membership_no                                                 String                 @unique @db.VarChar(32)
+  full_name                                                     String
+  picture_path                                                  String?
+  bio                                                           String                 @default("")
+  qualifications                                                String                 @default("")
+  age                                                           Int?
+  date_of_birth                                                 DateTime?              @db.Date
+  email                                                         String
+  phone                                                         String?
+  physical_address                                              String                 @default("")
+  postal_address                                                String                 @default("")
+  next_of_kin                                                   String                 @default("")
+  marital_status                                                MaritalStatus?
+  status                                                        MemberStatus           @default(PENDING)
+  registered_at                                                 DateTime               @default(now()) @db.Timestamptz(6)
+  reviewed_at                                                   DateTime?              @db.Timestamptz(6)
+  reviewed_by                                                   String?                @db.Uuid
+  archived_at                                                   DateTime?              @db.Timestamptz(6)
+  created_at                                                    DateTime               @default(now()) @db.Timestamptz(6)
+  updated_at                                                    DateTime               @db.Timestamptz(6)
+  attendance                                                    attendance[]
+  member_relationships_member_relationships_member_idTomembers  member_relationships[] @relation("member_relationships_member_idTomembers")
+  member_relationships_member_relationships_related_idTomembers member_relationships[] @relation("member_relationships_related_idTomembers")
+  branches                                                      branches               @relation(fields: [branch_id], references: [id])
+  sections                                                      sections               @relation(fields: [section_id], references: [id])
+  app_users                                                     app_users?             @relation(fields: [user_id], references: [id])
+
+  @@index([branch_id, status])
+  @@index([full_name])
+  @@index([section_id])
+}
+
+model sections {
+  id         String    @id @db.Uuid
+  name       String    @unique
+  is_active  Boolean   @default(true)
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  members    members[]
+}
+
+model user_roles {
+  id         String    @id @db.Uuid
+  user_id    String    @db.Uuid
+  role       AppRole
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  created_by String?   @db.Uuid
+  app_users  app_users @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, role])
+  @@index([role])
+}
+
+enum AppRole {
   MEMBER
-  ADMIN
+  SECURITY
+  BRANCH_ADMIN
+  MASTER_ADMIN
 }
 
-enum UserStatus {
-  ACTIVE
-  DISABLED
+enum AuditAction {
+  ACCOUNT_CREATED
+  PROFILE_UPDATED
+  MEMBER_APPROVED
+  MEMBER_DECLINED
+  MEMBER_ARCHIVED
+  ROLE_ASSIGNED
+  ROLE_REMOVED
+  BRANCH_ADMIN_ASSIGNED
+  BRANCH_ADMIN_REMOVED
+  ATTENDANCE_RECORDED
+  EVENT_CREATED
+  EVENT_UPDATED
+  EVENT_ARCHIVED
 }
 
-enum RegistrationStatus {
+enum FamilyRelationshipType {
+  SPOUSE
+  CHILD
+  PARENT
+}
+
+enum MaritalStatus {
+  SINGLE
+  MARRIED
+  DIVORCED
+  WIDOWED
+}
+
+enum MemberStatus {
   PENDING
   APPROVED
-  REJECTED
-}
-
-model User {
-  id           String      @id @default(cuid())
-  phone        String      @unique
-  email        String?     @unique
-  passwordHash String
-  role         UserRole    @default(MEMBER)
-  status       UserStatus  @default(ACTIVE)
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-  registration Registration?
-  sessions     Session[]
-
-  @@index([role, status])
-  @@map("users")
-}
-
-model Session {
-  id        String   @id @default(cuid())
-  tokenHash String   @unique
-  userId    String
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId, expiresAt])
-  @@map("sessions")
-}
-
-model Registration {
-  id              String             @id @default(cuid())
-  userId          String             @unique
-  title           String
-  fullName        String
-  branch          String
-  section         String
-  age             Int?
-  biography       String?
-  qualifications  String?
-  photoUrl        String?
-  physicalAddress String?
-  postalAddress   String?
-  marriageStatus  String?
-  status          RegistrationStatus @default(PENDING)
-  membershipNumber String?           @unique
-  baptismNumber   String?
-  qrToken         String?            @unique
-  reviewedAt      DateTime?
-  reviewedById    String?
-  submittedAt     DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
-  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  nextOfKin       NextOfKin?
-  familyMembers   FamilyMember[]
-
-  @@index([status, submittedAt])
-  @@index([branch, section])
-  @@map("registrations")
-}
-
-model NextOfKin {
-  id             String       @id @default(cuid())
-  registrationId String       @unique
-  fullName       String
-  relation       String
-  phone          String
-  registration   Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
-
-  @@map("next_of_kin")
-}
-
-model FamilyMember {
-  id             String       @id @default(cuid())
-  registrationId String
-  fullName       String
-  relation       String
-  createdAt      DateTime     @default(now())
-  registration   Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
-
-  @@index([registrationId])
-  @@map("family_members")
+  DECLINED
+  ARCHIVED
 }

@@ -21,17 +21,6 @@ interface MediaViewProps {
   onBack?: () => void;
 }
 
-const SILO_GALLERY = [
-  { src: '/assets/media/leader-blessing.jpg', caption: 'Open Arms at Silo' },
-  { src: '/assets/media/legacy-family.jpg', caption: 'Like Father, Like Son' },
-  { src: '/assets/media/leader-podium.jpg', caption: 'Address to the Faithful' },
-  { src: '/assets/media/regalia-portrait.jpg', caption: 'Ceremonial Regalia' },
-  { src: '/assets/media/leader-reading.jpg', caption: 'Proclamation of the Word' },
-  { src: '/assets/media/red-white-gathering.jpg', caption: 'Red & White Gathering' },
-  { src: '/assets/media/leader-address.jpg', caption: 'Blessing the Congregation' },
-  { src: '/assets/media/branch-procession.jpg', caption: 'Branch Procession' },
-];
-
 export const MediaView: React.FC<MediaViewProps> = ({ mediaItems, onBack }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [activeMedia, setActiveMedia] = useState<MediaItem | null>(null);
@@ -81,69 +70,36 @@ export const MediaView: React.FC<MediaViewProps> = ({ mediaItems, onBack }) => {
           Approved sermons, choral music, and Silo announcements
         </p>
 
-        {/* Category Pills */}
-        <div className="flex gap-2 mt-3 overflow-x-auto no-scrollbar pb-1">
-          {categories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-bold shrink-0 transition ${
-                selectedCategory === cat
-                  ? 'bg-[#3F76C5] text-white shadow-xs'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Silo Photo Gallery — official photographs strip */}
-      <div className="pt-4">
-        <div className="flex items-center justify-between px-4 mb-2.5">
-          <h3 className="text-sm font-black text-slate-900 tracking-tight">Silo Gallery</h3>
-          <a
-            href="https://www.instagram.com/iphcmediateam"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 text-[10px] font-extrabold text-[#3F76C5] uppercase tracking-widest hover:underline"
-          >
-            <img
-              src="/assets/media/media-team-logo.jpg"
-              alt="IPHC Media Team"
-              className="w-5 h-5 rounded-full object-cover border border-slate-200"
-            />
-            @iphcmediateam
-          </a>
-        </div>
-        <div className="flex gap-2.5 overflow-x-auto no-scrollbar px-4 pb-1.5">
-          {SILO_GALLERY.map((photo) => (
-            <button
-              key={photo.src}
-              onClick={() => setLightboxImage(photo)}
-              className="relative shrink-0 w-32 h-44 rounded-2xl overflow-hidden border border-slate-200 shadow-xs active:scale-95 transition group"
-            >
-              <img
-                src={photo.src}
-                alt={photo.caption}
-                loading="lazy"
-                className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
-              />
-              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent p-2 pt-6 text-left">
-                <p className="text-[9px] font-bold text-white leading-tight">{photo.caption}</p>
-              </div>
-              <div className="absolute top-2 right-2 p-1 rounded-full bg-black/50 text-white/90">
-                <Maximize2 className="w-3 h-3" />
-              </div>
-            </button>
-          ))}
-        </div>
+        {mediaItems.length > 0 && (
+          <div className="flex gap-2 mt-3 overflow-x-auto no-scrollbar pb-1">
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setSelectedCategory(cat)}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-bold shrink-0 transition ${
+                  selectedCategory === cat
+                    ? 'bg-[#3F76C5] text-white shadow-xs'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Media Cards Grid/List */}
       <div className="p-4 space-y-3.5 flex-1">
-        {filteredItems.map((item) => {
+        {filteredItems.length === 0 ? (
+          <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
+            <ImageIcon className="mx-auto h-9 w-9 text-slate-300" />
+            <h3 className="mt-3 text-sm font-extrabold text-slate-800">No media published yet</h3>
+            <p className="mx-auto mt-1 max-w-xs text-xs leading-relaxed text-slate-500">
+              Approved sermons, announcements, and gallery items will appear here when they are published.
+            </p>
+          </div>
+        ) : filteredItems.map((item) => {
           const isPhoto = item.type === 'photo';
           return (
             <div

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
   MemberProfile,
   Ceremony,
-  BusinessListing,
   AttendanceRecord,
   PaymentRecord,
   AnnouncementNotification,
@@ -10,11 +9,9 @@ import {
 import {
   initialMemberProfile,
   initialCeremonies,
-  initialBusinesses,
   initialAttendanceRecords,
   initialPaymentRecords,
   initialNotifications,
-  initialMediaItems,
 } from './data/initialData';
 import { BottomNav } from './components/BottomNav';
 import { HomeView } from './components/HomeView';
@@ -28,8 +25,9 @@ import { ProfileView } from './components/ProfileView';
 import { NotificationsModal } from './components/NotificationsModal';
 import { MembershipCard } from './components/MembershipCard';
 import { RegistrationAuthModal } from './components/RegistrationAuthModal';
+import { SecurityPortal } from './components/SecurityPortal';
 import PWAInstallOverlay from './components/PWAInstallOverlay';
-import { getCurrentUser, login, logout, register, RegistrationPayload } from './api';
+import { getCurrentUser, login, logout, register, RegistrationPayload, SecurityProfile } from './api';
 
 export default function App() {
   // Navigation State
@@ -42,6 +40,9 @@ export default function App() {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isMembershipPassOpen, setIsMembershipPassOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(true);
+  const [authReady, setAuthReady] = useState(false);
+  const [hasSession, setHasSession] = useState(false);
+  const [securityProfile, setSecurityProfile] = useState<SecurityProfile | null>(null);
   const [paymentsInitialCategory, setPaymentsInitialCategory] = useState<string | null>(null);
 
   // Splash screen: show the IPHC emblem on launch, then fade out smoothly
@@ -63,11 +64,6 @@ export default function App() {
   const [ceremonies, setCeremonies] = useState<Ceremony[]>(() => {
     const saved = localStorage.getItem('iphc_mmuso_ceremonies');
     return saved ? JSON.parse(saved) : initialCeremonies;
-  });
-
-  const [businesses, setBusinesses] = useState<BusinessListing[]>(() => {
-    const saved = localStorage.getItem('iphc_mmuso_businesses');
-    return saved ? JSON.parse(saved) : initialBusinesses;
   });
 
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>(() => {
@@ -93,13 +89,24 @@ export default function App() {
   useEffect(() => {
     let active = true;
     getCurrentUser()
-      .then(({ member: currentMember }) => {
-        if (active && currentMember) {
-          setMember(currentMember);
-          setIsAuthModalOpen(false);
+      .then(({ member: currentMember, role, securityProfile: currentSecurityProfile }) => {
+        if (active) {
+          if (role === 'SECURITY' && currentSecurityProfile) {
+            setSecurityProfile(currentSecurityProfile);
+            setHasSession(true);
+            setIsAuthModalOpen(false);
+          } else if (currentMember) {
+            setMember(currentMember);
+            setSecurityProfile(null);
+            setHasSession(true);
+            setIsAuthModalOpen(false);
+          }
+          setAuthReady(true);
         }
       })
-      .catch(() => undefined);
+      .catch(() => {
+        if (active) setAuthReady(true);
+      });
     return () => {
       active = false;
     };
@@ -108,10 +115,6 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('iphc_mmuso_ceremonies', JSON.stringify(ceremonies));
   }, [ceremonies]);
-
-  useEffect(() => {
-    localStorage.setItem('iphc_mmuso_businesses', JSON.stringify(businesses));
-  }, [businesses]);
 
   useEffect(() => {
     localStorage.setItem('iphc_mmuso_attendance', JSON.stringify(attendanceRecords));
@@ -126,15 +129,27 @@ export default function App() {
   }, [notifications]);
 
   // Auth Handlers
-  const handleLoginWithPhone = async (inputPhone: string, password: string) => {
-    const result = await login(inputPhone, password);
-    if (result.member) setMember(result.member);
+  const handleLoginWithEmail = async (inputEmail: string, password: string) => {
+    const result = await login(inputEmail, password);
+    if (result.role === 'SECURITY' && result.securityProfile) {
+      setSecurityProfile(result.securityProfile);
+      setHasSession(true);
+    } else if (result.member) {
+      setSecurityProfile(null);
+      setMember(result.member);
+      setHasSession(true);
+    }
+    setIsAuthModalOpen(false);
     setActiveTab('home');
   };
 
   const handleRegisterNewMember = async (registration: RegistrationPayload) => {
     const result = await register(registration);
-    if (result.member) setMember(result.member);
+    if (result.member) {
+      setSecurityProfile(null);
+      setMember(result.member);
+      setHasSession(true);
+    }
     setActiveTab('home');
   };
 
@@ -143,6 +158,8 @@ export default function App() {
       await logout();
     } finally {
       setMember(initialMemberProfile);
+      setSecurityProfile(null);
+      setHasSession(false);
       setIsAuthModalOpen(true);
     }
   };
@@ -170,18 +187,6 @@ export default function App() {
     );
   };
 
-  const handleAddOrUpdateBusiness = (listing: BusinessListing) => {
-    setBusinesses((prev) => {
-      const idx = prev.findIndex((b) => b.id === listing.id || b.isOwner);
-      if (idx >= 0) {
-        const next = [...prev];
-        next[idx] = listing;
-        return next;
-      }
-      return [listing, ...prev];
-    });
-  };
-
   const handleMarkAllNotificationsRead = () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
   };
@@ -200,6 +205,31 @@ export default function App() {
     setIsAttendanceOpen(false);
     setIsMediaOpen(false);
   };
+
+  if (!authReady) {
+    return (
+      <div className="min-h-screen bg-[#0A2A52] flex items-center justify-center">
+        <img src="/pwa-192x192.png" alt="IPHC" className="w-20 h-20 rounded-2xl animate-pulse" />
+      </div>
+    );
+  }
+
+  if (!hasSession) {
+    return (
+      <div className="min-h-screen bg-[#F4F7FB] flex items-center justify-center">
+        <RegistrationAuthModal
+          isOpen
+          onClose={() => undefined}
+          onLogin={handleLoginWithEmail}
+          onRegisterComplete={handleRegisterNewMember}
+        />
+      </div>
+    );
+  }
+
+  if (securityProfile) {
+    return <SecurityPortal profile={securityProfile} onSignOut={handleSignOut} />;
+  }
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] flex justify-center text-[#1A1A1A] selection:bg-[#3F76C5] selection:text-white">
@@ -247,7 +277,7 @@ export default function App() {
           ) : isMediaOpen ? (
             /* Sub-view: Media Sermons */
             <MediaView
-              mediaItems={initialMediaItems}
+              mediaItems={[]}
               onBack={() => setIsMediaOpen(false)}
             />
           ) : (
@@ -289,11 +319,7 @@ export default function App() {
               )}
 
               {activeTab === 'flg' && (
-                <FLGEmpireView
-                  businesses={businesses}
-                  member={member}
-                  onAddOrUpdateBusiness={handleAddOrUpdateBusiness}
-                />
+                <FLGEmpireView />
               )}
 
               {activeTab === 'profile' && (
@@ -340,7 +366,7 @@ export default function App() {
         <RegistrationAuthModal
           isOpen={isAuthModalOpen}
           onClose={() => setIsAuthModalOpen(false)}
-          onLogin={handleLoginWithPhone}
+          onLogin={handleLoginWithEmail}
           onRegisterComplete={handleRegisterNewMember}
         />
         {/* PWA Install Overlay: blocks web view until app is installed */}
