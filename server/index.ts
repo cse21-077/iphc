@@ -3,7 +3,7 @@ import express, { NextFunction, Request, Response } from 'express';
 import { randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { AppRole, MaritalStatus, MemberStatus, PrismaClient } from '@prisma/client';
+import { AppRole, MaritalStatus, MemberStatus, Prisma, PrismaClient } from '@prisma/client';
 import { normalizePhone } from './security.js';
 
 const prisma = new PrismaClient();
@@ -300,6 +300,18 @@ const requireAdmin = (request: Request, response: Response, next: NextFunction) 
 
 const isSecurityUser = (profile: { roles: AppRole[] }) => profile.roles.includes(AppRole.SECURITY);
 
+const createAttendanceIfAbsent = (data: Prisma.attendanceUncheckedCreateInput) =>
+  prisma.$transaction(async (transaction) => {
+    const existing = await transaction.attendance.findFirst({
+      where: { event_id: data.event_id, member_id: data.member_id },
+      select: { id: true },
+    });
+    return existing ? null : transaction.attendance.create({ data });
+  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
+
+const isAttendanceTransactionConflict = (error: unknown) =>
+  error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2034';
+
 const requireSecurity = (request: Request, response: Response, next: NextFunction) => {
   const profile = response.locals.profile as Awaited<ReturnType<typeof profileForAuthUser>> | undefined;
   if (!profile || !isSecurityUser(profile)) {
@@ -400,24 +412,17 @@ app.post('/api/security/attendance', requireUser(), requireSecurity, async (requ
       return response.status(403).json({ error: 'You can only check in members from your assigned branch.' });
     }
 
-    const existing = await prisma.attendance.findFirst({
-      where: { event_id: event.id, member_id: member.id },
-      select: { id: true, checked_in_at: true },
+    const attendance = await createAttendanceIfAbsent({
+      id: randomUUID(),
+      member_id: member.id,
+      branch_id: event.branch_id ?? member.branch_id,
+      event_id: event.id,
+      service_name: event.title,
+      location: event.location,
+      method: 'security_qr',
+      recorded_by: profile.app_users.id,
     });
-    if (existing) return response.status(409).json({ error: 'This member has already been checked in for this event.' });
-
-    const attendance = await prisma.attendance.create({
-      data: {
-        id: randomUUID(),
-        member_id: member.id,
-        branch_id: event.branch_id ?? member.branch_id,
-        event_id: event.id,
-        service_name: event.title,
-        location: event.location,
-        method: 'security_qr',
-        recorded_by: profile.app_users.id,
-      },
-    });
+    if (!attendance) return response.status(409).json({ error: 'This member has already been checked in for this event.' });
     return response.status(201).json({
       attendanceId: attendance.id,
       memberName: member.full_name,
@@ -426,6 +431,92 @@ app.post('/api/security/attendance', requireUser(), requireSecurity, async (requ
       checkedInAt: attendance.checked_in_at.toISOString(),
     });
   } catch (error) {
+    if (isAttendanceTransactionConflict(error)) {
+      return response.status(409).json({ error: 'This member has already been checked in for this event.' });
+    }
+    return next(error);
+  }
+});
+
+app.get('/api/attendance/me', requireUser(), async (request, response, next) => {
+  try {
+    const profile = response.locals.profile as NonNullable<Awaited<ReturnType<typeof profileForAuthUser>>>;
+    const member = profile.members;
+    if (!member || member.archived_at) {
+      return response.status(403).json({ error: 'An active member profile is required to view attendance.' });
+    }
+
+    const records = await prisma.attendance.findMany({
+      where: { member_id: member.id },
+      include: { branches: { select: { name: true } } },
+      orderBy: { checked_in_at: 'desc' },
+      take: 100,
+    });
+    return response.json(records.map((record) => ({
+      attendanceId: record.id,
+      eventName: record.service_name,
+      branch: record.branches.name,
+      location: record.location,
+      method: record.method === 'self_qr' ? 'self_qr' : 'usher_scan',
+      checkedInAt: record.checked_in_at.toISOString(),
+    })));
+  } catch (error) {
+    return next(error);
+  }
+});
+
+app.post('/api/attendance/self', requireUser(), async (request, response, next) => {
+  try {
+    const profile = response.locals.profile as NonNullable<Awaited<ReturnType<typeof profileForAuthUser>>>;
+    const member = profile.members;
+    if (!member || member.archived_at || member.status !== MemberStatus.APPROVED) {
+      return response.status(403).json({ error: 'An approved active member profile is required to check in.' });
+    }
+
+    const eventId = typeof request.body?.eventId === 'string' ? request.body.eventId.trim() : '';
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(eventId)) {
+      return response.status(400).json({ error: 'Scan a valid IPHC event QR code.' });
+    }
+
+    const now = new Date();
+    const startOfToday = new Date(now);
+    startOfToday.setHours(0, 0, 0, 0);
+    const event = await prisma.events.findFirst({
+      where: {
+        id: eventId,
+        is_published: true,
+        archived_at: null,
+        OR: [
+          { starts_at: { gte: startOfToday } },
+          { ends_at: { gte: now } },
+        ],
+      },
+      include: { branches: { select: { name: true } } },
+    });
+    if (!event) return response.status(404).json({ error: 'That event is not open for check-in.' });
+
+    const attendance = await createAttendanceIfAbsent({
+      id: randomUUID(),
+      member_id: member.id,
+      branch_id: event.branch_id ?? member.branch_id,
+      event_id: event.id,
+      service_name: event.title,
+      location: event.location,
+      method: 'self_qr',
+    });
+    if (!attendance) return response.status(409).json({ error: 'You have already checked in for this event.' });
+    return response.status(201).json({
+      attendanceId: attendance.id,
+      eventName: event.title,
+      branch: event.branches?.name ?? member.branches.name,
+      location: event.location,
+      method: 'self_qr',
+      checkedInAt: attendance.checked_in_at.toISOString(),
+    });
+  } catch (error) {
+    if (isAttendanceTransactionConflict(error)) {
+      return response.status(409).json({ error: 'You have already checked in for this event.' });
+    }
     return next(error);
   }
 });

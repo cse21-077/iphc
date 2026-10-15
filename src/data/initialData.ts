@@ -39,7 +39,7 @@ export const initialMemberProfile: MemberProfile = {
     { id: 'fam_4', name: 'Koko Martha Lekolwane', relation: 'Mother' },
   ],
   joinYear: 2008,
-  qrToken: 'IPHC-MEMBER-SECURE-849201-ZUURBEKOM-SILO',
+  qrToken: 'IPHC-MM-849201',
 };
 
 export const initialAttendanceRecords: AttendanceRecord[] = [

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   MemberProfile,
   Ceremony,
@@ -27,7 +27,29 @@ import { MembershipCard } from './components/MembershipCard';
 import { RegistrationAuthModal } from './components/RegistrationAuthModal';
 import { SecurityPortal } from './components/SecurityPortal';
 import PWAInstallOverlay from './components/PWAInstallOverlay';
-import { getCurrentUser, login, logout, register, RegistrationPayload, SecurityProfile } from './api';
+import {
+  getCurrentUser,
+  getMemberAttendance,
+  login,
+  logout,
+  MemberAttendance,
+  register,
+  RegistrationPayload,
+  SecurityProfile,
+} from './api';
+
+const attendanceRecordFromApi = (record: MemberAttendance): AttendanceRecord => {
+  const checkedInAt = new Date(record.checkedInAt);
+  return {
+    id: record.attendanceId,
+    date: checkedInAt.toISOString().slice(0, 10),
+    time: checkedInAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    serviceName: record.eventName,
+    branch: `${record.branch} · ${record.location}`,
+    method: record.method,
+    verificationCode: `ATT-${record.attendanceId.slice(0, 8).toUpperCase()}`,
+  };
+};
 
 export default function App() {
   // Navigation State
@@ -70,6 +92,7 @@ export default function App() {
     const saved = localStorage.getItem('iphc_mmuso_attendance');
     return saved ? JSON.parse(saved) : initialAttendanceRecords;
   });
+  const [attendanceLoadError, setAttendanceLoadError] = useState('');
 
   const [paymentRecords, setPaymentRecords] = useState<PaymentRecord[]>(() => {
     const saved = localStorage.getItem('iphc_mmuso_payments');
@@ -80,6 +103,55 @@ export default function App() {
     const saved = localStorage.getItem('iphc_mmuso_notifications');
     return saved ? JSON.parse(saved) : initialNotifications;
   });
+
+  const loadMemberAttendance = useCallback(async () => {
+    try {
+      const records = await getMemberAttendance();
+      setAttendanceRecords(records.map(attendanceRecordFromApi));
+      setAttendanceLoadError('');
+    } catch (error) {
+      setAttendanceLoadError(error instanceof Error ? error.message : 'Attendance history could not be loaded.');
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isAttendanceOpen || !hasSession || securityProfile) return;
+
+    let active = true;
+    let refreshing = false;
+    const refreshAttendance = async () => {
+      if (refreshing) return;
+      refreshing = true;
+      try {
+        const records = await getMemberAttendance();
+        if (active) {
+          setAttendanceRecords(records.map(attendanceRecordFromApi));
+          setAttendanceLoadError('');
+        }
+      } catch (error) {
+        if (active) {
+          setAttendanceLoadError(error instanceof Error ? error.message : 'Attendance history could not be loaded.');
+        }
+      } finally {
+        refreshing = false;
+      }
+    };
+
+    void refreshAttendance();
+    const interval = window.setInterval(refreshAttendance, 10000);
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') void refreshAttendance();
+    };
+    window.addEventListener('focus', refreshWhenVisible);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
+
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+      window.removeEventListener('focus', refreshWhenVisible);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
+    };
+  }, [hasSession, isAttendanceOpen, securityProfile]);
 
   // Save to local storage on changes
   useEffect(() => {
@@ -100,6 +172,7 @@ export default function App() {
             setSecurityProfile(null);
             setHasSession(true);
             setIsAuthModalOpen(false);
+            void loadMemberAttendance();
           }
           setAuthReady(true);
         }
@@ -138,6 +211,7 @@ export default function App() {
       setSecurityProfile(null);
       setMember(result.member);
       setHasSession(true);
+      void loadMemberAttendance();
     }
     setIsAuthModalOpen(false);
     setActiveTab('home');
@@ -149,6 +223,7 @@ export default function App() {
       setSecurityProfile(null);
       setMember(result.member);
       setHasSession(true);
+      void loadMemberAttendance();
     }
     setActiveTab('home');
   };
@@ -167,6 +242,7 @@ export default function App() {
   // Handlers
   const handleRecordAttendance = (newRecord: AttendanceRecord) => {
     setAttendanceRecords((prev) => [newRecord, ...prev]);
+    setAttendanceLoadError('');
   };
 
   const handleRecordPayment = (newRecord: PaymentRecord) => {
@@ -268,6 +344,8 @@ export default function App() {
             /* Sub-view: Attendance */
             <AttendanceView
               records={attendanceRecords}
+              error={attendanceLoadError}
+              onRefresh={loadMemberAttendance}
               onBack={() => setIsAttendanceOpen(false)}
               onScanNow={() => {
                 setIsAttendanceOpen(false);

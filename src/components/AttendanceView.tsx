@@ -1,15 +1,19 @@
 import React from 'react';
-import { ArrowLeft, CheckCircle, Calendar, Clock, MapPin, QrCode, UserCheck } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Calendar, Clock, MapPin, QrCode, UserCheck, RefreshCw } from 'lucide-react';
 import { AttendanceRecord } from '../types';
 
 interface AttendanceViewProps {
   records: AttendanceRecord[];
+  error?: string;
+  onRefresh: () => Promise<void>;
   onBack: () => void;
   onScanNow: () => void;
 }
 
 export const AttendanceView: React.FC<AttendanceViewProps> = ({
   records,
+  error,
+  onRefresh,
   onBack,
   onScanNow,
 }) => {
@@ -31,19 +35,36 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
       </div>
 
       {/* Summary Banner */}
-      <div className="p-4 bg-slate-50 border-b border-slate-200/60 flex items-center justify-between">
+      <div className="p-4 bg-slate-50 border-b border-slate-200/60 flex items-center justify-between gap-3">
         <div>
           <p className="text-xs text-slate-500 font-medium">Services Attended</p>
           <p className="text-xl font-extrabold text-slate-900">{records.length} Services</p>
+          <p className="mt-1 text-[10px] text-slate-500">Updates automatically while this page is open.</p>
         </div>
-
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => void onRefresh()}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 transition hover:bg-slate-100"
+            aria-label="Refresh attendance history"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            Refresh
+          </button>
         <button
           onClick={onScanNow}
           className="px-3.5 py-2 rounded-xl bg-[#D13138] text-white text-xs font-bold shadow-xs hover:bg-[#b8262d] transition active:scale-95"
         >
           + Check In Today
         </button>
+        </div>
       </div>
+
+      {error && (
+        <p role="alert" className="mx-4 mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-700">
+          Attendance history could not be verified: {error}
+        </p>
+      )}
 
       {/* Simple History List (Most recent first) */}
       <div className="p-4 space-y-3">

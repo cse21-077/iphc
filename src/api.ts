@@ -56,6 +56,17 @@ export interface SecurityCheckIn {
   checkedInAt: string;
 }
 
+export interface MemberAttendance {
+  attendanceId: string;
+  eventName: string;
+  branch: string;
+  location: string;
+  method: 'self_qr' | 'usher_scan';
+  checkedInAt: string;
+}
+
+export const EVENT_QR_PREFIX = 'IPHC-EVENT:';
+
 export interface AdminUser {
   id: string;
   phone: string;
@@ -89,6 +100,14 @@ export const recordSecurityCheckIn = (eventId: string, membershipNumber: string)
   request<SecurityCheckIn>('/api/security/attendance', {
     method: 'POST',
     body: JSON.stringify({ eventId, membershipNumber }),
+  });
+
+export const getMemberAttendance = () => request<MemberAttendance[]>('/api/attendance/me');
+
+export const recordMemberCheckIn = (eventId: string) =>
+  request<MemberAttendance>('/api/attendance/self', {
+    method: 'POST',
+    body: JSON.stringify({ eventId }),
   });
 
 export const login = (email: string, password: string) =>

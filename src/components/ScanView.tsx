@@ -1,11 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import type { IScannerControls } from '@zxing/browser';
 import {
   Camera,
   CheckCircle2,
-  Sparkles,
-  RefreshCw,
-  Flashlight,
-  FlashlightOff,
   QrCode,
   MapPin,
   Clock,
@@ -15,6 +12,7 @@ import {
 import confetti from 'canvas-confetti';
 import { MemberProfile, AttendanceRecord } from '../types';
 import { QRCodeDisplay } from './QRCodeDisplay';
+import { EVENT_QR_PREFIX, MemberAttendance, recordMemberCheckIn } from '../api';
 
 interface ScanViewProps {
   member: MemberProfile;
@@ -31,138 +29,90 @@ export const ScanView: React.FC<ScanViewProps> = ({
 }) => {
   const [scanMode, setScanMode] = useState<'self_camera' | 'usher_show'>('self_camera');
   const [cameraActive, setCameraActive] = useState(false);
-  const [hasCameraPermission, setHasCameraPermission] = useState<boolean | null>(null);
-  const [torchOn, setTorchOn] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
-  const [scanProgress, setScanProgress] = useState(0);
+  const [scanError, setScanError] = useState('');
 
-  // Success Confirmation state
   const [successRecord, setSuccessRecord] = useState<AttendanceRecord | null>(null);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-
-  // Initialize camera when in self_camera mode
-  useEffect(() => {
-    let active = true;
-
-    async function setupCamera() {
-      if (scanMode !== 'self_camera') {
-        stopCamera();
-        return;
-      }
-
-      try {
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-          setHasCameraPermission(false);
-          return;
-        }
-
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment' },
-        });
-
-        if (active) {
-          streamRef.current = stream;
-          if (videoRef.current) {
-            videoRef.current.srcObject = stream;
-            await videoRef.current.play();
-          }
-          setCameraActive(true);
-          setHasCameraPermission(true);
-        }
-      } catch (err) {
-        console.warn('Camera access not granted or unavailable:', err);
-        if (active) {
-          setHasCameraPermission(false);
-          setCameraActive(false);
-        }
-      }
-    }
-
-    setupCamera();
-
-    return () => {
-      active = false;
-      stopCamera();
+  const makeAttendanceRecord = (attendance: MemberAttendance): AttendanceRecord => {
+    const checkedInAt = new Date(attendance.checkedInAt);
+    return {
+      id: attendance.attendanceId,
+      date: checkedInAt.toISOString().slice(0, 10),
+      time: checkedInAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      serviceName: attendance.eventName,
+      branch: `${attendance.branch} · ${attendance.location}`,
+      method: attendance.method,
+      verificationCode: `ATT-${attendance.attendanceId.slice(0, 8).toUpperCase()}`,
     };
-  }, [scanMode]);
+  };
 
-  const stopCamera = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
+  const handleScannedCode = useCallback(async (value: string) => {
+    setScanError('');
+    if (!value.startsWith(EVENT_QR_PREFIX)) {
+      setScanError('That is not an IPHC event QR code. Scan the event QR displayed by the gate team.');
+      return;
     }
-    setCameraActive(false);
-  };
 
-  const toggleTorch = () => {
-    if (!streamRef.current) return;
-    const track = streamRef.current.getVideoTracks()[0];
-    if (track && 'applyConstraints' in track) {
-      const newTorch = !torchOn;
-      (track as any)
-        .applyConstraints({
-          advanced: [{ torch: newTorch }],
-        })
-        .then(() => setTorchOn(newTorch))
-        .catch(() => setTorchOn(newTorch));
-    } else {
-      setTorchOn(!torchOn);
-    }
-  };
-
-  // Perform a simulated or verified QR check-in
-  const handleTriggerScan = (presetVenue = 'Entrance Gate A — Zuurbekom Silo', seatNumber = 'Block C, Row 12') => {
-    setIsScanning(true);
-    setScanProgress(0);
-
-    const interval = setInterval(() => {
-      setScanProgress((prev) => {
-        if (prev >= 90) {
-          clearInterval(interval);
-          finishScan(presetVenue, seatNumber);
-          return 100;
-        }
-        return prev + 25;
-      });
-    }, 120);
-  };
-
-  const finishScan = (venue: string, seat: string) => {
-    setIsScanning(false);
-    setScanProgress(100);
-
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const dateStr = now.toISOString().split('T')[0];
-
-    const newRecord: AttendanceRecord = {
-      id: `att_${Date.now()}`,
-      date: dateStr,
-      time: timeStr,
-      serviceName: 'Sabbath Morning Service',
-      branch: venue,
-      method: scanMode === 'self_camera' ? 'self_qr' : 'usher_scan',
-      seatNumber: seat,
-      verificationCode: `ATT-ZB-${Math.floor(10000 + Math.random() * 90000)}`,
-    };
-
-    setSuccessRecord(newRecord);
-    onRecordAttendance(newRecord);
-
-    // Fire celebratory confetti for unmistakable confirmation
+    const eventId = value.slice(EVENT_QR_PREFIX.length).trim();
     try {
+      setIsScanning(true);
+      const attendance = await recordMemberCheckIn(eventId);
+      const record = makeAttendanceRecord(attendance);
+      setSuccessRecord(record);
+      onRecordAttendance(record);
       confetti({
         particleCount: 75,
         spread: 70,
         origin: { y: 0.6 },
         colors: ['#3F76C5', '#D13138', '#10B981', '#F59E0B'],
       });
-    } catch {
-      // Ignore if canvas-confetti unsupported
+    } catch (error) {
+      setScanError(error instanceof Error ? error.message : 'Check-in could not be verified. Please try again.');
+    } finally {
+      setIsScanning(false);
     }
-  };
+  }, [onRecordAttendance]);
+
+  useEffect(() => {
+    if (!cameraActive || scanMode !== 'self_camera' || member.isPending) return;
+    let active = true;
+    let detected = false;
+    let controls: IScannerControls | null = null;
+
+    const startScanner = async () => {
+      try {
+        const { BrowserQRCodeReader } = await import('@zxing/browser');
+        if (!active || !videoRef.current) return;
+        const reader = new BrowserQRCodeReader();
+        controls = await reader.decodeFromVideoDevice(undefined, videoRef.current, (result, _error, scanControls) => {
+          if (!active || detected || !result) return;
+          detected = true;
+          scanControls.stop();
+          setCameraActive(false);
+          void handleScannedCode(result.getText().trim());
+        });
+        if (!active || detected) controls.stop();
+      } catch (error) {
+        if (!active) return;
+        setCameraActive(false);
+        setScanError(error instanceof Error && error.name === 'NotAllowedError'
+          ? 'Camera access is blocked. Allow camera access in browser settings and try again.'
+          : 'Could not start the camera scanner. Check camera permissions and try again.');
+      }
+    };
+
+    void startScanner();
+    return () => {
+      active = false;
+      controls?.stop();
+    };
+  }, [cameraActive, handleScannedCode, member.isPending, scanMode]);
+
+  useEffect(() => {
+    if (scanMode !== 'self_camera') setCameraActive(false);
+  }, [scanMode]);
 
   return (
     <div className="min-h-[calc(100vh-8rem)] flex flex-col pb-20 max-w-md mx-auto">
@@ -231,7 +181,6 @@ export const ScanView: React.FC<ScanViewProps> = ({
 
           {/* Camera Frame Viewport */}
           <div className="relative w-full max-w-[320px] aspect-square rounded-3xl overflow-hidden bg-slate-950 shadow-2xl border-4 border-slate-200/60 flex items-center justify-center">
-            {/* Real video feed or simulated camera background */}
             {cameraActive ? (
               <video
                 ref={videoRef}
@@ -243,14 +192,8 @@ export const ScanView: React.FC<ScanViewProps> = ({
             ) : (
               <div className="relative w-full h-full flex flex-col items-center justify-center bg-slate-900 text-slate-400 p-6 text-center">
                 <Camera className="w-10 h-10 text-slate-400 mb-3" />
-                <p className="text-xs font-medium text-slate-300">
-                  {hasCameraPermission === false
-                    ? 'Camera permission not granted'
-                    : 'Opening camera sensor...'}
-                </p>
-                <p className="text-[11px] text-slate-500 mt-1">
-                  Use the quick test buttons below to simulate instant check-in.
-                </p>
+                <p className="text-xs font-medium text-slate-300">Camera scanner is stopped</p>
+                <p className="text-[11px] text-slate-500 mt-1">Start the scanner and point it at an official event QR code.</p>
               </div>
             )}
 
@@ -271,60 +214,38 @@ export const ScanView: React.FC<ScanViewProps> = ({
               </div>
             </div>
 
-            {/* Torch Toggle inside camera view */}
-            <button
-              onClick={toggleTorch}
-              className={`absolute top-4 right-4 p-2.5 rounded-full backdrop-blur-md transition ${
-                torchOn
-                  ? 'bg-amber-400 text-slate-900 shadow-md'
-                  : 'bg-black/40 text-white hover:bg-black/60'
-              }`}
-              title="Toggle Flashlight"
-            >
-              {torchOn ? <Flashlight className="w-4 h-4" /> : <FlashlightOff className="w-4 h-4" />}
-            </button>
-
-            {/* Scanning Progress Overlay if active */}
             {isScanning && (
               <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-xs flex flex-col items-center justify-center text-white">
-                <div className="relative w-16 h-16 mb-2 flex items-center justify-center">
-                  <div className="w-14 h-14 rounded-full border-4 border-white/20 border-t-[#D13138] animate-spin" />
-                  <span className="absolute text-xs font-bold">{scanProgress}%</span>
-                </div>
-                <p className="text-xs font-semibold tracking-wide uppercase text-blue-200">
-                  Verifying Church Token...
-                </p>
+                <div className="w-12 h-12 rounded-full border-4 border-white/20 border-t-[#D13138] animate-spin mb-3" />
+                <p className="text-xs font-semibold tracking-wide uppercase text-blue-200">Validating attendance...</p>
               </div>
             )}
           </div>
 
-          {/* Quick Simulation Actions (Guarantees smooth demo on any device) */}
           <div className="w-full mt-4 space-y-2.5">
-            <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider text-center">
-              Available Test QR Codes:
-            </p>
-
-            <div className="grid grid-cols-2 gap-2">
+            {scanError && (
+              <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-700">
+                {scanError}
+              </p>
+            )}
+            {member.isPending ? (
+              <p role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-900">
+                Your membership is awaiting approval. Check-in is available after approval.
+              </p>
+            ) : (
               <button
-                id="btn-scan-entrance-test"
-                onClick={() => handleTriggerScan('Entrance Gate 1 (Banna Section)', 'Gate 1 Fast Pass')}
+                type="button"
+                onClick={() => {
+                  setScanError('');
+                  setCameraActive((active) => !active);
+                }}
                 disabled={isScanning}
-                className="flex items-center justify-center gap-1.5 py-3 px-3 rounded-2xl bg-[#3F76C5] text-white text-xs font-bold hover:bg-[#3465a8] transition shadow-md shadow-blue-500/20 active:scale-98"
+                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#3F76C5] px-4 py-3 text-sm font-bold text-white shadow-md transition hover:bg-[#3465a8] disabled:opacity-50"
               >
-                <QrCode className="w-4 h-4" />
-                <span>Scan Entrance QR</span>
+                <Camera className="h-4 w-4" />
+                {cameraActive ? 'Stop camera scanner' : 'Start camera scanner'}
               </button>
-
-              <button
-                id="btn-scan-seat-test"
-                onClick={() => handleTriggerScan('Zuurbekom Silo Tabernacle', 'Seat Row 14, Block C')}
-                disabled={isScanning}
-                className="flex items-center justify-center gap-1.5 py-3 px-3 rounded-2xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition shadow-md active:scale-98"
-              >
-                <QrCode className="w-4 h-4 text-[#D13138]" />
-                <span>Scan Seat QR</span>
-              </button>
-            </div>
+            )}
           </div>
         </div>
       )}
@@ -358,14 +279,9 @@ export const ScanView: React.FC<ScanViewProps> = ({
               </p>
             </div>
 
-            {/* Simulate Usher Scanning Member */}
-            <button
-              onClick={() => handleTriggerScan('Usher Gate Scanner — Silo', 'Verified Member Entry')}
-              disabled={isScanning}
-              className="mt-5 w-full py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-bold hover:bg-emerald-700 transition shadow-md active:scale-98"
-            >
-              Simulate Usher Scanning Pass ✓
-            </button>
+            <p className="mt-5 rounded-xl bg-slate-50 p-3 text-xs leading-relaxed text-slate-600">
+              Ask the gate team to scan this membership QR. Attendance is confirmed only after the server accepts the check-in.
+            </p>
           </div>
         </div>
       )}

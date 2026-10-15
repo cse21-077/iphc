@@ -17,10 +17,12 @@ import {
 import {
   getSecurityEvents,
   recordSecurityCheckIn,
+  EVENT_QR_PREFIX,
   SecurityCheckIn,
   SecurityEvent,
   SecurityProfile,
 } from '../api';
+import { QRCodeDisplay } from './QRCodeDisplay';
 
 const errorMessage = (error: unknown) =>
   error instanceof Error ? error.message : 'Something went wrong. Please try again.';
@@ -347,6 +349,13 @@ export const SecurityPortal: React.FC<{
                       <p className="flex items-center gap-2"><Clock3 className="h-4 w-4 text-blue-700" />{formatEventTime(selectedEvent.startsAt)}</p>
                       <p className="flex items-center gap-2"><DoorOpen className="h-4 w-4 text-blue-700" />{selectedEvent.location}</p>
                       {selectedEvent.branch && <p className="flex items-center gap-2"><Users className="h-4 w-4 text-blue-700" />{selectedEvent.branch}</p>}
+                    </div>
+                    <div className="mt-4 border-t border-slate-100 pt-4 text-center">
+                      <p className="text-xs font-extrabold text-slate-800">Official member self check-in QR</p>
+                      <p className="mt-1 text-[11px] text-slate-500">Members scan this event code with their IPHC app.</p>
+                      <div className="mt-3 inline-flex rounded-2xl border border-slate-200 bg-white p-3">
+                        <QRCodeDisplay value={`${EVENT_QR_PREFIX}${selectedEvent.id}`} size={160} />
+                      </div>
                     </div>
                   </>
                 ) : (
