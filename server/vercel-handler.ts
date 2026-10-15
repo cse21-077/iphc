@@ -1,4 +1,4 @@
-import app from './index';
+import app from './index.js';
 
 export default function handler(request: any, response: any) {
   const requestUrl = request.url ?? '/';

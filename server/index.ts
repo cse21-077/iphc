@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { AppRole, MaritalStatus, MemberStatus, PrismaClient } from '@prisma/client';
-import { normalizePhone } from './security';
+import { normalizePhone } from './security.js';
 
 const prisma = new PrismaClient();
 const app = express();
