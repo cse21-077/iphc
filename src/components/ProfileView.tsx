@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MemberProfile } from '../types';
 import {
   CreditCard,
@@ -19,7 +19,7 @@ import {
   QrCode,
   LogOut,
   UserPlus,
-  LayoutDashboard,
+  UserRound,
 } from 'lucide-react';
 
 interface ProfileViewProps {
@@ -52,6 +52,17 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const [address, setAddress] = useState(member.address);
   const [photo, setPhoto] = useState(member.photo);
 
+  // Profile photo: show the member's image when available, otherwise initials
+  const [photoFailed, setPhotoFailed] = useState(false);
+  useEffect(() => setPhotoFailed(false), [member.photo]);
+  const initials = member.name
+    .split(' ')
+    .filter(Boolean)
+    .map((word) => word[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+
   const toggleAccordion = (id: string) => {
     setOpenAccordion((prev) => (prev === id ? null : id));
   };
@@ -74,12 +85,19 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       <div className="bg-white rounded-[26px] p-5 border border-slate-200/90 shadow-xs space-y-4">
         <div className="flex items-center gap-4">
           <div className="relative shrink-0">
-            <div className="w-18 h-18 rounded-full overflow-hidden border-2 border-slate-200 shadow-xs">
-              <img
-                src={member.photo}
-                alt={member.name}
-                className="w-full h-full object-cover"
-              />
+            <div className="w-18 h-18 rounded-full overflow-hidden border-2 border-slate-200 shadow-xs bg-[#0A2A52]">
+              {member.photo && !photoFailed ? (
+                <img
+                  src={member.photo}
+                  alt={member.name}
+                  className="w-full h-full object-cover"
+                  onError={() => setPhotoFailed(true)}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-white font-black text-xl tracking-wide">
+                  {initials || <UserRound className="w-7 h-7" />}
+                </div>
+              )}
             </div>
             <button
               onClick={() => setShowEditModal(true)}
@@ -389,19 +407,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
       {/* Account Session Actions */}
       <div className="bg-white rounded-[26px] p-4 border border-slate-200/90 shadow-xs space-y-2">
-        <button
-          onClick={() => {
-            window.location.hash = '#/admin';
-          }}
-          className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-[#0A2A52] to-[#1D4ED8] hover:from-[#123a6b] hover:to-[#1a45b8] text-white font-bold text-xs flex items-center justify-between transition active:scale-98 shadow-[0_8px_20px_rgba(10,42,82,0.25)]"
-        >
-          <div className="flex items-center gap-2.5">
-            <LayoutDashboard className="w-4 h-4 text-blue-200" />
-            <span>Administration Dashboard</span>
-          </div>
-          <ChevronRight className="w-4 h-4 text-blue-200" />
-        </button>
-
         <button
           onClick={onOpenAuthModal}
           className="w-full py-3 px-4 rounded-2xl bg-slate-50 border border-slate-200/80 hover:bg-slate-100/80 text-slate-800 font-bold text-xs flex items-center justify-between transition active:scale-98"

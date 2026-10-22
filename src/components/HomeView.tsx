@@ -42,6 +42,14 @@ export const HomeView: React.FC<HomeViewProps> = ({
   const [savedItems, setSavedItems] = useState<Record<string, boolean>>({
     silo: true,
   });
+  const [photoFailed, setPhotoFailed] = useState(false);
+  const initials = member.name
+    .split(' ')
+    .filter(Boolean)
+    .map((word) => word[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
 
   const toggleSave = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -116,12 +124,19 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
           {/* Right Column: Circular Framed Avatar */}
           <div className="shrink-0 relative">
-            <div className="w-15 h-15 rounded-full overflow-hidden border-2 border-white/70 shadow-md relative group-hover:scale-105 transition duration-200">
-              <img
-                src={member.photo}
-                alt={member.name}
-                className="w-full h-full object-cover"
-              />
+            <div className="w-15 h-15 rounded-full overflow-hidden border-2 border-white/70 shadow-md relative group-hover:scale-105 transition duration-200 bg-white/20">
+              {member.photo && !photoFailed ? (
+                <img
+                  src={member.photo}
+                  alt={member.name}
+                  className="w-full h-full object-cover"
+                  onError={() => setPhotoFailed(true)}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-white font-black text-base tracking-wide bg-[#3F76C5]">
+                  {initials}
+                </div>
+              )}
               <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
                 <QrCode className="w-5 h-5 text-white" />
               </div>

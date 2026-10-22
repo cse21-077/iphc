@@ -94,7 +94,7 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({
 
       {/* Full-Screen Expanded Card Modal */}
       {expanded && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 pt-[calc(env(safe-area-inset-top)+1rem)] pb-[calc(env(safe-area-inset-bottom)+1rem)] animate-in fade-in duration-200">
           <div
             className={`w-full max-w-sm rounded-3xl p-6 shadow-2xl transition-all duration-300 relative ${
               highBrightness ? 'bg-white text-slate-900' : 'bg-slate-900 text-white'

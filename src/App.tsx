@@ -326,7 +326,7 @@ export default function App() {
 
   if (!hasSession) {
     return (
-      <div className="min-h-screen bg-[#F4F7FB] flex items-center justify-center">
+      <div className="min-h-screen bg-[#F4F7FB] flex items-center justify-center p-4 pt-[calc(env(safe-area-inset-top)+1rem)] pb-[calc(env(safe-area-inset-bottom)+1rem)]">
         <RegistrationAuthModal
           isOpen
           onClose={() => undefined}
@@ -361,8 +361,8 @@ export default function App() {
           </div>
         </div>
       )}
-      {/* Mobile container constraint: standard responsive app frame */}
-      <div className="w-full max-w-md bg-white min-h-screen flex flex-col shadow-[0_24px_48px_rgba(0,0,0,0.08)] relative border-x border-gray-100">
+      {/* Mobile container constraint: standard responsive app frame — top padding respects the device notch/status bar */}
+      <div className="w-full max-w-md bg-white min-h-screen flex flex-col shadow-[0_24px_48px_rgba(0,0,0,0.08)] relative border-x border-gray-100 pt-[env(safe-area-inset-top)]">
         {/* Content View Router */}
         <main className="flex-1 overflow-y-auto bg-white">
           {/* Sub-view: Payments */}
