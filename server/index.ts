@@ -218,7 +218,20 @@ const profileForAuthUser = async (authUser: AuthUser) => {
   return { app_users: appUser, members: appUser.members, roles: appUser.user_roles.map((entry) => entry.role) };
 };
 
-const responseRole = (roles: AppRole[]) => roles.some((role) => role !== AppRole.MEMBER) ? 'ADMIN' : 'MEMBER';
+const responseRole = (roles: AppRole[]) => {
+  if (roles.includes(AppRole.SECURITY)) return 'SECURITY';
+  return roles.some((role) => role !== AppRole.MEMBER) ? 'ADMIN' : 'MEMBER';
+};
+
+const securityProfileDto = (profile: { app_users: any; roles: AppRole[] } | null) => {
+  if (!profile?.roles.includes(AppRole.SECURITY)) return null;
+  return {
+    name: profile.app_users.display_name,
+    email: profile.app_users.email,
+    role: 'SECURITY',
+    branch: null,
+  };
+};
 
 const requireUser = async (request: Request, response: Response, next: NextFunction) => {
   try {
@@ -263,18 +276,23 @@ const requireAdmin = (request: Request, response: Response, next: NextFunction) 
   return next();
 };
 
-const signIn = (phone: string, password: string) => supabaseRequest<SupabaseSession>('/auth/v1/token?grant_type=password', {
-  method: 'POST', body: { phone, password },
-});
+const signIn = (identifier: { phone: string } | { email: string }, password: string) =>
+  supabaseRequest<SupabaseSession>('/auth/v1/token?grant_type=password', {
+    method: 'POST', body: { ...identifier, password },
+  });
 
 app.post('/api/auth/register', async (request, response, next) => {
   try {
     const { authUser } = await createAccount(request.body as RegistrationInput);
     const phone = normalizePhone(String(request.body?.phone ?? ''));
-    const session = await signIn(phone, String(request.body?.password ?? ''));
+    const session = await signIn({ phone }, String(request.body?.password ?? ''));
     setSessionCookies(response, session);
     const profile = await profileForAuthUser(authUser);
-    return response.status(201).json({ member: memberDto(profile), role: responseRole(profile?.roles ?? []) });
+    return response.status(201).json({
+      member: memberDto(profile),
+      securityProfile: securityProfileDto(profile),
+      role: responseRole(profile?.roles ?? []),
+    });
   } catch (error) {
     return next(error);
   }
@@ -282,12 +300,32 @@ app.post('/api/auth/register', async (request, response, next) => {
 
 app.post('/api/auth/login', async (request, response, next) => {
   try {
-    const phone = normalizePhone(String(request.body?.phone ?? ''));
-    const session = await signIn(phone, String(request.body?.password ?? ''));
+    const emailField = typeof request.body?.email === 'string' ? request.body.email.trim().toLowerCase() : '';
+    const phoneField = normalizePhone(typeof request.body?.phone === 'string' ? request.body.phone : '');
+    let identifier: { phone: string } | { email: string } | null = null;
+    if (emailField.includes('@')) {
+      // Accounts are created in Supabase Auth with a phone identity, so map
+      // the email to the member's registered phone before asking Supabase.
+      const appUser = await prisma.app_users.findUnique({ where: { email: emailField }, include: { members: true } });
+      const linkedPhone = normalizePhone(appUser?.members?.phone ?? '');
+      identifier = linkedPhone ? { phone: linkedPhone } : { email: emailField };
+    } else {
+      // The sign-in field doubles as a phone entry — accept either identifier.
+      const asPhone = normalizePhone(emailField) || phoneField;
+      if (/^\+?[0-9]{7,15}$/.test(asPhone)) identifier = { phone: asPhone };
+    }
+    if (!identifier) {
+      return response.status(400).json({ error: 'Enter a valid email address or phone number.' });
+    }
+    const session = await signIn(identifier, String(request.body?.password ?? ''));
     const profile = await profileForAuthUser(session.user);
     if (!profile) return response.status(403).json({ error: 'No active member profile is linked to this account.' });
     setSessionCookies(response, session);
-    return response.json({ member: memberDto(profile), role: responseRole(profile.roles) });
+    return response.json({
+      member: memberDto(profile),
+      securityProfile: securityProfileDto(profile),
+      role: responseRole(profile.roles),
+    });
   } catch (error) {
     return next(error);
   }
@@ -296,7 +334,13 @@ app.post('/api/auth/login', async (request, response, next) => {
 app.get('/api/auth/me', requireUser, (request, response) => {
   const profile = response.locals.profile;
   const authUser = response.locals.authUser as AuthUser;
-  return response.json({ member: memberDto(profile), role: responseRole(profile.roles), phone: authUser.phone, email: authUser.email });
+  return response.json({
+    member: memberDto(profile),
+    securityProfile: securityProfileDto(profile),
+    role: responseRole(profile.roles),
+    phone: authUser.phone,
+    email: authUser.email,
+  });
 });
 
 app.post('/api/auth/logout', async (request, response, next) => {
@@ -339,6 +383,152 @@ app.post('/api/admin/users', requireUser, requireAdmin, async (request, response
       createdAt: user.created_at.toISOString(),
       member: memberDto({ app_users: user, members: created.profile.member, roles: created.profile.roles }),
     });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+app.get('/api/auth/options', async (_request, response, next) => {
+  try {
+    const [branchList, sectionList] = await Promise.all([
+      prisma.branches.findMany({ where: { is_active: true }, select: { name: true }, orderBy: { name: 'asc' } }),
+      prisma.sections.findMany({ where: { is_active: true }, select: { name: true }, orderBy: { name: 'asc' } }),
+    ]);
+    return response.json({
+      branches: branchList.map((entry) => entry.name),
+      sections: sectionList.map((entry) => entry.name),
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+const requireSecurity = (request: Request, response: Response, next: NextFunction) => {
+  const roles = response.locals.profile?.roles as AppRole[] | undefined;
+  if (!roles?.some((role) => role === AppRole.SECURITY || role === AppRole.MASTER_ADMIN)) {
+    return response.status(403).json({ error: 'Security personnel access is required.' });
+  }
+  return next();
+};
+
+app.get('/api/security/events', requireUser, requireSecurity, async (_request, response, next) => {
+  try {
+    const now = new Date();
+    const events = await prisma.events.findMany({
+      where: { is_published: true, archived_at: null, ends_at: { gte: now } },
+      include: { branches: true },
+      orderBy: { starts_at: 'asc' },
+      take: 50,
+    });
+    return response.json(events.map((event) => ({
+      id: event.id,
+      title: event.title,
+      category: event.category,
+      location: event.location,
+      startsAt: event.starts_at.toISOString(),
+      branch: event.branches?.name ?? null,
+    })));
+  } catch (error) {
+    return next(error);
+  }
+});
+
+app.post('/api/security/attendance', requireUser, requireSecurity, async (request, response, next) => {
+  try {
+    const eventId = String(request.body?.eventId ?? '');
+    const membershipNumber = String(request.body?.membershipNumber ?? '').trim();
+    if (!eventId || !membershipNumber) {
+      return response.status(400).json({ error: 'Event and membership number are required.' });
+    }
+    const [event, member] = await Promise.all([
+      prisma.events.findFirst({ where: { id: eventId, is_published: true, archived_at: null } }),
+      prisma.members.findFirst({ where: { membership_no: membershipNumber }, include: { branches: true } }),
+    ]);
+    if (!event) return response.status(404).json({ error: 'Event not found.' });
+    if (!member) return response.status(404).json({ error: 'No member found with that membership number.' });
+    const attendance = await prisma.attendance.create({
+      data: {
+        id: randomUUID(),
+        member_id: member.id,
+        branch_id: member.branch_id,
+        event_id: event.id,
+        service_name: event.title,
+        location: event.location,
+        method: 'usher_scan',
+        recorded_by: response.locals.profile.app_users.id,
+      },
+    });
+    return response.status(201).json({
+      attendanceId: attendance.id,
+      memberName: member.full_name,
+      membershipNumber: member.membership_no,
+      eventName: event.title,
+      checkedInAt: attendance.checked_in_at.toISOString(),
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+const attendanceDto = (record: {
+  id: string;
+  service_name: string;
+  location: string;
+  method: string;
+  checked_in_at: Date;
+  events: { title: string } | null;
+  branches: { name: string };
+}) => ({
+  attendanceId: record.id,
+  eventName: record.events?.title ?? record.service_name,
+  branch: record.branches.name,
+  location: record.location,
+  method: (record.method === 'self_qr' ? 'self_qr' : 'usher_scan') as 'self_qr' | 'usher_scan',
+  checkedInAt: record.checked_in_at.toISOString(),
+});
+
+app.get('/api/attendance/me', requireUser, async (request, response, next) => {
+  try {
+    const member = response.locals.profile.members;
+    if (!member) return response.json([]);
+    const records = await prisma.attendance.findMany({
+      where: { member_id: member.id },
+      include: { events: true, branches: true },
+      orderBy: { checked_in_at: 'desc' },
+      take: 100,
+    });
+    return response.json(records.map(attendanceDto));
+  } catch (error) {
+    return next(error);
+  }
+});
+
+app.post('/api/attendance/self', requireUser, async (request, response, next) => {
+  try {
+    const member = response.locals.profile.members;
+    if (!member) return response.status(403).json({ error: 'No member profile is linked to this account.' });
+    const eventId = String(request.body?.eventId ?? '');
+    if (!eventId) return response.status(400).json({ error: 'Event is required.' });
+    const event = await prisma.events.findFirst({ where: { id: eventId, is_published: true, archived_at: null } });
+    if (!event) return response.status(404).json({ error: 'Event not found.' });
+    const existing = await prisma.attendance.findFirst({
+      where: { member_id: member.id, event_id: event.id },
+      include: { events: true, branches: true },
+    });
+    if (existing) return response.json(attendanceDto(existing));
+    const attendance = await prisma.attendance.create({
+      data: {
+        id: randomUUID(),
+        member_id: member.id,
+        branch_id: member.branch_id,
+        event_id: event.id,
+        service_name: event.title,
+        location: event.location,
+        method: 'self_qr',
+      },
+      include: { events: true, branches: true },
+    });
+    return response.status(201).json(attendanceDto(attendance));
   } catch (error) {
     return next(error);
   }

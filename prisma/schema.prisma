@@ -184,6 +184,7 @@ enum AppRole {
   MEMBER
   BRANCH_ADMIN
   MASTER_ADMIN
+  SECURITY
 }
 
 enum AuditAction {
