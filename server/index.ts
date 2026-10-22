@@ -3,14 +3,14 @@ import express, { NextFunction, Request, Response } from 'express';
 import { randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { AppRole, MaritalStatus, MemberStatus, Prisma, PrismaClient } from '@prisma/client';
-import { normalizePhone } from './security.js';
+import { AppRole, MaritalStatus, MemberStatus, PrismaClient } from '@prisma/client';
+import { normalizePhone } from './security';
 
 const prisma = new PrismaClient();
 const app = express();
 const PORT = Number(process.env.API_PORT ?? 3001);
-const SUPABASE_URL = (process.env.SUPABASE_URL ?? process.env.PUBLIC_SUPABASE_URL ?? '').replace(/\/$/, '');
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY ?? process.env.PUBLIC_SUPABASE_ANON_KEY ?? '';
+const SUPABASE_URL = (process.env.SUPABASE_URL ?? 'https://zhtrpgvnbrflheismytd.supabase.co').replace(/\/$/, '');
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY ?? '';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
 const ACCESS_COOKIE = 'iphc_access';
 const REFRESH_COOKIE = 'iphc_refresh';
@@ -19,18 +19,6 @@ app.disable('x-powered-by');
 app.use(express.json({ limit: '1mb' }));
 
 app.get('/api/health', (request, response) => response.json({ status: 'ok' }));
-
-app.get('/api/auth/options', async (request, response, next) => {
-  try {
-    const [branches, sections] = await Promise.all([
-      prisma.branches.findMany({ where: { is_active: true }, select: { name: true }, orderBy: { name: 'asc' } }),
-      prisma.sections.findMany({ where: { is_active: true }, select: { name: true }, orderBy: { name: 'asc' } }),
-    ]);
-    return response.json({ branches: branches.map(({ name }) => name), sections: sections.map(({ name }) => name) });
-  } catch (error) {
-    return next(error);
-  }
-});
 
 type RegistrationInput = {
   phone?: string;
@@ -87,7 +75,6 @@ const clearSessionCookie = (response: Response) => {
 const supabaseRequest = async <T>(path: string, options: { method?: string; body?: unknown; token?: string; admin?: boolean } = {}) => {
   const apiKey = options.admin ? SUPABASE_SERVICE_ROLE_KEY : SUPABASE_ANON_KEY;
   if (!apiKey) throw Object.assign(new Error(options.admin ? 'Set SUPABASE_SERVICE_ROLE_KEY in the server environment.' : 'Set SUPABASE_ANON_KEY in the server environment.'), { status: 503 });
-  if (!SUPABASE_URL) throw Object.assign(new Error('Set SUPABASE_URL or PUBLIC_SUPABASE_URL in the server environment.'), { status: 503 });
   const response = await fetch(`${SUPABASE_URL}${path}`, {
     method: options.method ?? 'GET',
     headers: {
@@ -177,7 +164,7 @@ const createAccount = async (input: RegistrationInput) => {
   const authUser = await supabaseRequest<AuthUser>('/auth/v1/admin/users', {
     method: 'POST',
     admin: true,
-    body: { email, email_confirm: true, phone, phone_confirm: true, password, user_metadata: { display_name: fullName } },
+    body: { phone, phone_confirm: true, password, user_metadata: { display_name: fullName } },
   });
   const now = new Date();
   const extras: MemberExtras = {
@@ -196,17 +183,7 @@ const createAccount = async (input: RegistrationInput) => {
       });
       const membershipNo = `${branchRecord.code}-${String(counter.next_value - 1).padStart(6, '0')}`;
       const appUser = await tx.app_users.create({
-        data: {
-          id: randomUUID(),
-          auth_user_id: authUser.id,
-          email,
-          display_name: fullName,
-          created_at: now,
-          updated_at: now,
-          user_roles: {
-            create: { id: randomUUID(), role: AppRole.MEMBER, created_at: now },
-          },
-        },
+        data: { id: randomUUID(), auth_user_id: authUser.id, email, display_name: fullName, created_at: now, updated_at: now },
       });
       const member = await tx.members.create({
         data: {
@@ -223,24 +200,17 @@ const createAccount = async (input: RegistrationInput) => {
         },
         include: { branches: true, sections: true },
       });
+      await tx.user_roles.create({ data: { id: randomUUID(), user_id: appUser.id, role: AppRole.MEMBER, created_at: now } });
       return { appUser, member, roles: [AppRole.MEMBER] };
-    }, { maxWait: 10_000, timeout: 15_000 });
+    });
     return { authUser, profile: created };
   } catch (error) {
-    try {
-      await supabaseRequest(`/auth/v1/admin/users/${authUser.id}`, { method: 'DELETE', admin: true });
-    } catch (cleanupError) {
-      console.error('Unable to remove the Supabase account after member registration failed.', cleanupError);
-    }
+    await supabaseRequest(`/auth/v1/admin/users/${authUser.id}`, { method: 'DELETE', admin: true }).catch(() => undefined);
     throw error;
   }
 };
 
-const profileInclude = {
-  members: { include: { branches: true, sections: true } },
-  user_roles: true,
-  branch_admins: { include: { branches: true } },
-} as const;
+const profileInclude = { members: { include: { branches: true, sections: true } }, user_roles: true } as const;
 
 const profileForAuthUser = async (authUser: AuthUser) => {
   const appUser = await prisma.app_users.findUnique({ where: { auth_user_id: authUser.id }, include: profileInclude });
@@ -248,13 +218,9 @@ const profileForAuthUser = async (authUser: AuthUser) => {
   return { app_users: appUser, members: appUser.members, roles: appUser.user_roles.map((entry) => entry.role) };
 };
 
-const responseRole = (roles: AppRole[]) => {
-  if (roles.includes(AppRole.SECURITY)) return 'SECURITY';
-  return roles.some((role) => role !== AppRole.MEMBER) ? 'ADMIN' : 'MEMBER';
-};
+const responseRole = (roles: AppRole[]) => roles.some((role) => role !== AppRole.MEMBER) ? 'ADMIN' : 'MEMBER';
 
-const requireUser = (options: { optional?: boolean } = {}) =>
-async (request: Request, response: Response, next: NextFunction) => {
+const requireUser = async (request: Request, response: Response, next: NextFunction) => {
   try {
     const cookies = cookieValue(request);
     let accessToken = cookies(ACCESS_COOKIE);
@@ -270,7 +236,6 @@ async (request: Request, response: Response, next: NextFunction) => {
       const refreshToken = cookies(REFRESH_COOKIE);
       if (!refreshToken) {
         clearSessionCookie(response);
-        if (options.optional) return response.json({ member: null, role: 'MEMBER' });
         return response.status(401).json({ error: 'Sign in to continue.' });
       }
       const session = await supabaseRequest<SupabaseSession>('/auth/v1/token?grant_type=refresh_token', {
@@ -298,234 +263,15 @@ const requireAdmin = (request: Request, response: Response, next: NextFunction) 
   return next();
 };
 
-const isSecurityUser = (profile: { roles: AppRole[] }) => profile.roles.includes(AppRole.SECURITY);
-
-const createAttendanceIfAbsent = (data: Prisma.attendanceUncheckedCreateInput) =>
-  prisma.$transaction(async (transaction) => {
-    const existing = await transaction.attendance.findFirst({
-      where: { event_id: data.event_id, member_id: data.member_id },
-      select: { id: true },
-    });
-    return existing ? null : transaction.attendance.create({ data });
-  }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable });
-
-const isAttendanceTransactionConflict = (error: unknown) =>
-  error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2034';
-
-const requireSecurity = (request: Request, response: Response, next: NextFunction) => {
-  const profile = response.locals.profile as Awaited<ReturnType<typeof profileForAuthUser>> | undefined;
-  if (!profile || !isSecurityUser(profile)) {
-    return response.status(403).json({ error: 'Gate security access is required.' });
-  }
-  return next();
-};
-
-const securityProfileDto = (profile: NonNullable<Awaited<ReturnType<typeof profileForAuthUser>>>) => ({
-  name: profile.app_users.display_name,
-  email: profile.app_users.email,
-  role: AppRole.SECURITY,
-  branch: profile.app_users.branch_admins?.branches.name ?? null,
-});
-
-const signIn = (email: string, password: string) => supabaseRequest<SupabaseSession>('/auth/v1/token?grant_type=password', {
-  method: 'POST', body: { email: email.trim().toLowerCase(), password },
-});
-
-app.get('/api/security/events', requireUser(), requireSecurity, async (request, response, next) => {
-  try {
-    const profile = response.locals.profile as NonNullable<Awaited<ReturnType<typeof profileForAuthUser>>>;
-    const branchAdmin = profile.app_users.branch_admins;
-    const now = new Date();
-    const startOfToday = new Date(now);
-    startOfToday.setHours(0, 0, 0, 0);
-    const events = await prisma.events.findMany({
-      where: {
-        is_published: true,
-        archived_at: null,
-        AND: [
-          { OR: [
-            { starts_at: { gte: startOfToday } },
-            { ends_at: { gte: now } },
-          ] },
-          ...(branchAdmin ? [{ OR: [
-            { branch_id: null },
-            { branch_id: branchAdmin.branch_id },
-          ] }] : []),
-        ],
-      },
-      include: { branches: { select: { name: true } } },
-      orderBy: { starts_at: 'asc' },
-    });
-    return response.json(events.map((event) => ({
-      id: event.id,
-      title: event.title,
-      category: event.category,
-      location: event.location,
-      startsAt: event.starts_at.toISOString(),
-      branch: event.branches?.name ?? null,
-    })));
-  } catch (error) {
-    return next(error);
-  }
-});
-
-app.post('/api/security/attendance', requireUser(), requireSecurity, async (request, response, next) => {
-  try {
-    const profile = response.locals.profile as NonNullable<Awaited<ReturnType<typeof profileForAuthUser>>>;
-    const eventId = typeof request.body?.eventId === 'string' ? request.body.eventId : '';
-    const membershipNumber = typeof request.body?.membershipNumber === 'string'
-      ? request.body.membershipNumber.trim()
-      : '';
-    if (!eventId || !membershipNumber || membershipNumber.length > 32) {
-      return response.status(400).json({ error: 'Select an event and scan a valid membership QR code.' });
-    }
-
-    const now = new Date();
-    const startOfToday = new Date(now);
-    startOfToday.setHours(0, 0, 0, 0);
-    const event = await prisma.events.findFirst({
-      where: {
-        id: eventId,
-        is_published: true,
-        archived_at: null,
-        OR: [
-          { starts_at: { gte: startOfToday } },
-          { ends_at: { gte: now } },
-        ],
-      },
-    });
-    if (!event) return response.status(404).json({ error: 'That event is not open for check-in.' });
-
-    const branchAdmin = profile.app_users.branch_admins;
-    if (branchAdmin && event.branch_id && event.branch_id !== branchAdmin.branch_id) {
-      return response.status(403).json({ error: 'You can only check in members for events assigned to your branch.' });
-    }
-
-    const member = await prisma.members.findUnique({
-      where: { membership_no: membershipNumber },
-      include: { branches: { select: { name: true } } },
-    });
-    if (!member || member.archived_at || member.status !== MemberStatus.APPROVED) {
-      return response.status(404).json({ error: 'No approved active member matches that membership QR code.' });
-    }
-    if (branchAdmin && member.branch_id !== branchAdmin.branch_id) {
-      return response.status(403).json({ error: 'You can only check in members from your assigned branch.' });
-    }
-
-    const attendance = await createAttendanceIfAbsent({
-      id: randomUUID(),
-      member_id: member.id,
-      branch_id: event.branch_id ?? member.branch_id,
-      event_id: event.id,
-      service_name: event.title,
-      location: event.location,
-      method: 'security_qr',
-      recorded_by: profile.app_users.id,
-    });
-    if (!attendance) return response.status(409).json({ error: 'This member has already been checked in for this event.' });
-    return response.status(201).json({
-      attendanceId: attendance.id,
-      memberName: member.full_name,
-      membershipNumber: member.membership_no,
-      eventName: event.title,
-      checkedInAt: attendance.checked_in_at.toISOString(),
-    });
-  } catch (error) {
-    if (isAttendanceTransactionConflict(error)) {
-      return response.status(409).json({ error: 'This member has already been checked in for this event.' });
-    }
-    return next(error);
-  }
-});
-
-app.get('/api/attendance/me', requireUser(), async (request, response, next) => {
-  try {
-    const profile = response.locals.profile as NonNullable<Awaited<ReturnType<typeof profileForAuthUser>>>;
-    const member = profile.members;
-    if (!member || member.archived_at) {
-      return response.status(403).json({ error: 'An active member profile is required to view attendance.' });
-    }
-
-    const records = await prisma.attendance.findMany({
-      where: { member_id: member.id },
-      include: { branches: { select: { name: true } } },
-      orderBy: { checked_in_at: 'desc' },
-      take: 100,
-    });
-    return response.json(records.map((record) => ({
-      attendanceId: record.id,
-      eventName: record.service_name,
-      branch: record.branches.name,
-      location: record.location,
-      method: record.method === 'self_qr' ? 'self_qr' : 'usher_scan',
-      checkedInAt: record.checked_in_at.toISOString(),
-    })));
-  } catch (error) {
-    return next(error);
-  }
-});
-
-app.post('/api/attendance/self', requireUser(), async (request, response, next) => {
-  try {
-    const profile = response.locals.profile as NonNullable<Awaited<ReturnType<typeof profileForAuthUser>>>;
-    const member = profile.members;
-    if (!member || member.archived_at || member.status !== MemberStatus.APPROVED) {
-      return response.status(403).json({ error: 'An approved active member profile is required to check in.' });
-    }
-
-    const eventId = typeof request.body?.eventId === 'string' ? request.body.eventId.trim() : '';
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(eventId)) {
-      return response.status(400).json({ error: 'Scan a valid IPHC event QR code.' });
-    }
-
-    const now = new Date();
-    const startOfToday = new Date(now);
-    startOfToday.setHours(0, 0, 0, 0);
-    const event = await prisma.events.findFirst({
-      where: {
-        id: eventId,
-        is_published: true,
-        archived_at: null,
-        OR: [
-          { starts_at: { gte: startOfToday } },
-          { ends_at: { gte: now } },
-        ],
-      },
-      include: { branches: { select: { name: true } } },
-    });
-    if (!event) return response.status(404).json({ error: 'That event is not open for check-in.' });
-
-    const attendance = await createAttendanceIfAbsent({
-      id: randomUUID(),
-      member_id: member.id,
-      branch_id: event.branch_id ?? member.branch_id,
-      event_id: event.id,
-      service_name: event.title,
-      location: event.location,
-      method: 'self_qr',
-    });
-    if (!attendance) return response.status(409).json({ error: 'You have already checked in for this event.' });
-    return response.status(201).json({
-      attendanceId: attendance.id,
-      eventName: event.title,
-      branch: event.branches?.name ?? member.branches.name,
-      location: event.location,
-      method: 'self_qr',
-      checkedInAt: attendance.checked_in_at.toISOString(),
-    });
-  } catch (error) {
-    if (isAttendanceTransactionConflict(error)) {
-      return response.status(409).json({ error: 'You have already checked in for this event.' });
-    }
-    return next(error);
-  }
+const signIn = (phone: string, password: string) => supabaseRequest<SupabaseSession>('/auth/v1/token?grant_type=password', {
+  method: 'POST', body: { phone, password },
 });
 
 app.post('/api/auth/register', async (request, response, next) => {
   try {
     const { authUser } = await createAccount(request.body as RegistrationInput);
-    const email = String(request.body?.email ?? '');
-    const session = await signIn(email, String(request.body?.password ?? ''));
+    const phone = normalizePhone(String(request.body?.phone ?? ''));
+    const session = await signIn(phone, String(request.body?.password ?? ''));
     setSessionCookies(response, session);
     const profile = await profileForAuthUser(authUser);
     return response.status(201).json({ member: memberDto(profile), role: responseRole(profile?.roles ?? []) });
@@ -536,33 +282,21 @@ app.post('/api/auth/register', async (request, response, next) => {
 
 app.post('/api/auth/login', async (request, response, next) => {
   try {
-    const email = String(request.body?.email ?? '');
-    const session = await signIn(email, String(request.body?.password ?? ''));
+    const phone = normalizePhone(String(request.body?.phone ?? ''));
+    const session = await signIn(phone, String(request.body?.password ?? ''));
     const profile = await profileForAuthUser(session.user);
-    if (!profile || (!profile.members && !isSecurityUser(profile))) {
-      return response.status(403).json({ error: 'No active member profile is linked to this account.' });
-    }
+    if (!profile) return response.status(403).json({ error: 'No active member profile is linked to this account.' });
     setSessionCookies(response, session);
-    return response.json({
-      member: memberDto(profile),
-      role: responseRole(profile.roles),
-      securityProfile: isSecurityUser(profile) ? securityProfileDto(profile) : null,
-    });
+    return response.json({ member: memberDto(profile), role: responseRole(profile.roles) });
   } catch (error) {
     return next(error);
   }
 });
 
-app.get('/api/auth/me', requireUser({ optional: true }), (request, response) => {
+app.get('/api/auth/me', requireUser, (request, response) => {
   const profile = response.locals.profile;
   const authUser = response.locals.authUser as AuthUser;
-  return response.json({
-    member: memberDto(profile),
-    role: responseRole(profile.roles),
-    securityProfile: isSecurityUser(profile) ? securityProfileDto(profile) : null,
-    phone: authUser.phone,
-    email: authUser.email,
-  });
+  return response.json({ member: memberDto(profile), role: responseRole(profile.roles), phone: authUser.phone, email: authUser.email });
 });
 
 app.post('/api/auth/logout', async (request, response, next) => {
@@ -576,7 +310,7 @@ app.post('/api/auth/logout', async (request, response, next) => {
   }
 });
 
-app.get('/api/admin/users', requireUser(), requireAdmin, async (request, response, next) => {
+app.get('/api/admin/users', requireUser, requireAdmin, async (request, response, next) => {
   try {
     const users = await prisma.app_users.findMany({ include: profileInclude, orderBy: { created_at: 'desc' } });
     return response.json(users.map((user) => {
@@ -596,7 +330,7 @@ app.get('/api/admin/users', requireUser(), requireAdmin, async (request, respons
   }
 });
 
-app.post('/api/admin/users', requireUser(), requireAdmin, async (request, response, next) => {
+app.post('/api/admin/users', requireUser, requireAdmin, async (request, response, next) => {
   try {
     const created = await createAccount(request.body as RegistrationInput);
     const user = created.profile.appUser;

@@ -33,7 +33,7 @@ export const Header: React.FC<HeaderProps> = ({
               <span className="font-bold text-base tracking-tight text-[#0A2A52] leading-none">
                 MMUSO
               </span>
-              <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold tracking-wider uppercase bg-[#D13138] text-white">
+              <span className="px-1.5 py-0.5 rounded text-[9px] font-extrabold tracking-wider uppercase bg-[#0A2A52] text-white">
                 IPHC
               </span>
             </div>
@@ -64,10 +64,10 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             id="header-notifications-btn"
             onClick={onOpenNotifications}
-            className="relative p-2 rounded-xl text-[#1A1A1A] hover:bg-[#F3F4F6] active:scale-95 transition"
+            className="relative p-2 rounded-xl text-[#0A2A52] hover:bg-[#3F76C5]/10 hover:text-[#3F76C5] active:scale-95 transition"
             aria-label="Announcements & Notifications"
           >
-            <Bell className="w-5 h-5 text-[#1A1A1A]" />
+            <Bell className="w-5 h-5" />
             {unreadCount > 0 && (
               <span className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[#D13138] text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-white">
                 {unreadCount}

@@ -35,18 +35,18 @@ export const BottomNav: React.FC<BottomNavProps> = ({
             onClick={() => handleTabChange('home')}
             className={`flex-1 flex flex-col items-center justify-center py-1 rounded-full cursor-pointer transition-all duration-150 active:scale-95 touch-manipulation ${
               activeTab === 'home'
-                ? 'text-[#181D20]'
-                : 'text-slate-400 hover:text-slate-700'
+                ? 'text-[#3F76C5] bg-[#3F76C5]/10'
+                : 'text-slate-400 hover:text-[#3F76C5]'
             }`}
             aria-label="Home"
           >
             <Home
               className={`w-5 h-5 transition-transform ${
-                activeTab === 'home' ? 'stroke-[2.5] scale-110 text-[#181D20]' : 'stroke-[1.8]'
+                activeTab === 'home' ? 'stroke-[2.5] scale-110 text-[#3F76C5]' : 'stroke-[1.8]'
               }`}
             />
             {activeTab === 'home' ? (
-              <span className="w-1 h-1 rounded-full bg-[#181D20] mt-1" />
+              <span className="w-1 h-1 rounded-full bg-[#3F76C5] mt-1" />
             ) : (
               <span className="text-[10px] tracking-wider mt-0.5 font-semibold">
                 Home
@@ -61,18 +61,18 @@ export const BottomNav: React.FC<BottomNavProps> = ({
             onClick={() => handleTabChange('calendar')}
             className={`flex-1 flex flex-col items-center justify-center py-1 rounded-full cursor-pointer transition-all duration-150 active:scale-95 touch-manipulation ${
               activeTab === 'calendar'
-                ? 'text-[#181D20]'
-                : 'text-slate-400 hover:text-slate-700'
+                ? 'text-[#3F76C5] bg-[#3F76C5]/10'
+                : 'text-slate-400 hover:text-[#3F76C5]'
             }`}
             aria-label="Silo Ceremonies"
           >
             <Calendar
               className={`w-5 h-5 transition-transform ${
-                activeTab === 'calendar' ? 'stroke-[2.5] scale-110 text-[#181D20]' : 'stroke-[1.8]'
+                activeTab === 'calendar' ? 'stroke-[2.5] scale-110 text-[#3F76C5]' : 'stroke-[1.8]'
               }`}
             />
             {activeTab === 'calendar' ? (
-              <span className="w-1 h-1 rounded-full bg-[#181D20] mt-1" />
+              <span className="w-1 h-1 rounded-full bg-[#3F76C5] mt-1" />
             ) : (
               <span className="text-[10px] tracking-wider mt-0.5 font-semibold">
                 Silo
@@ -86,7 +86,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
               id="nav-tab-scan"
               type="button"
               onClick={() => handleTabChange('scan')}
-              className="w-12 h-12 bg-[#181D20] hover:bg-black rounded-full flex items-center justify-center shadow-[0_8px_20px_rgba(24,29,32,0.35)] border-2 border-white cursor-pointer transition-transform duration-150 active:scale-95 touch-manipulation focus:outline-hidden"
+              className="w-12 h-12 bg-gradient-to-br from-[#3F76C5] to-[#0A2A52] hover:from-[#3566ac] hover:to-[#0d3560] rounded-full flex items-center justify-center shadow-[0_8px_22px_rgba(63,118,197,0.5)] border-2 border-white cursor-pointer transition-transform duration-150 active:scale-95 touch-manipulation focus:outline-hidden"
               aria-label="Scan QR Code to Check In"
             >
               <Scan className="w-5 h-5 text-white stroke-[2.2]" />
@@ -100,18 +100,18 @@ export const BottomNav: React.FC<BottomNavProps> = ({
             onClick={() => handleTabChange('flg')}
             className={`flex-1 flex flex-col items-center justify-center py-1 rounded-full cursor-pointer transition-all duration-150 active:scale-95 touch-manipulation ${
               activeTab === 'flg'
-                ? 'text-[#181D20]'
-                : 'text-slate-400 hover:text-slate-700'
+                ? 'text-[#3F76C5] bg-[#3F76C5]/10'
+                : 'text-slate-400 hover:text-[#3F76C5]'
             }`}
             aria-label="FLG Empire Directory"
           >
             <Briefcase
               className={`w-5 h-5 transition-transform ${
-                activeTab === 'flg' ? 'stroke-[2.5] scale-110 text-[#181D20]' : 'stroke-[1.8]'
+                activeTab === 'flg' ? 'stroke-[2.5] scale-110 text-[#3F76C5]' : 'stroke-[1.8]'
               }`}
             />
             {activeTab === 'flg' ? (
-              <span className="w-1 h-1 rounded-full bg-[#181D20] mt-1" />
+              <span className="w-1 h-1 rounded-full bg-[#3F76C5] mt-1" />
             ) : (
               <span className="text-[10px] tracking-wider mt-0.5 font-semibold">
                 Directory
@@ -126,18 +126,18 @@ export const BottomNav: React.FC<BottomNavProps> = ({
             onClick={() => handleTabChange('profile')}
             className={`flex-1 flex flex-col items-center justify-center py-1 rounded-full cursor-pointer transition-all duration-150 active:scale-95 touch-manipulation ${
               activeTab === 'profile'
-                ? 'text-[#181D20]'
-                : 'text-slate-400 hover:text-slate-700'
+                ? 'text-[#3F76C5] bg-[#3F76C5]/10'
+                : 'text-slate-400 hover:text-[#3F76C5]'
             }`}
             aria-label="Member Profile"
           >
             <User
               className={`w-5 h-5 transition-transform ${
-                activeTab === 'profile' ? 'stroke-[2.5] scale-110 text-[#181D20]' : 'stroke-[1.8]'
+                activeTab === 'profile' ? 'stroke-[2.5] scale-110 text-[#3F76C5]' : 'stroke-[1.8]'
               }`}
             />
             {activeTab === 'profile' ? (
-              <span className="w-1 h-1 rounded-full bg-[#181D20] mt-1" />
+              <span className="w-1 h-1 rounded-full bg-[#3F76C5] mt-1" />
             ) : (
               <span className="text-[10px] tracking-wider mt-0.5 font-semibold">
                 Profile

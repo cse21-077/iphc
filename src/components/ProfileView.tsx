@@ -83,7 +83,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             </div>
             <button
               onClick={() => setShowEditModal(true)}
-              className="absolute bottom-0 right-0 p-1.5 rounded-full bg-[#181D20] text-white shadow-md hover:bg-black transition active:scale-95"
+              className="absolute bottom-0 right-0 p-1.5 rounded-full bg-[#3F76C5] text-white shadow-md hover:bg-[#3566ac] transition active:scale-95"
               title="Edit photo or details"
               aria-label="Edit Profile"
             >
@@ -108,7 +108,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         <div
           id="profile-open-pass-btn"
           onClick={onOpenCard}
-          className="rounded-[20px] bg-gradient-to-r from-[#1E40AF] via-[#1D4ED8] to-[#172554] text-white p-3.5 flex items-center justify-between cursor-pointer active:scale-[0.99] transition shadow-xs hover:shadow-md border border-blue-400/20 group"
+          className="rounded-[20px] bg-gradient-to-r from-[#0A2A52] via-[#164A86] to-[#1D4ED8] text-white p-3.5 flex items-center justify-between cursor-pointer active:scale-[0.99] transition shadow-xs hover:shadow-md border border-blue-400/20 group"
         >
           <div className="flex items-center gap-3 min-w-0">
             <div className="w-10 h-10 rounded-xl bg-white/15 border border-white/20 flex items-center justify-center text-white shrink-0">
@@ -138,7 +138,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           onClick={onNavigateToPayments}
           className="p-3.5 rounded-[22px] bg-white border border-slate-200/90 shadow-xs flex flex-col items-center text-center hover:border-slate-400 transition active:scale-95 group"
         >
-          <CreditCard className="w-5 h-5 text-[#181D20] mb-1.5 group-hover:scale-110 transition" />
+          <CreditCard className="w-5 h-5 text-[#3F76C5] mb-1.5 group-hover:scale-110 transition" />
           <span className="text-xs font-bold text-slate-900">Payments</span>
           <span className="text-[10px] text-slate-400 mt-0.5 font-medium">Karolo & History</span>
         </button>
@@ -148,7 +148,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           onClick={onNavigateToAttendance}
           className="p-3.5 rounded-[22px] bg-white border border-slate-200/90 shadow-xs flex flex-col items-center text-center hover:border-slate-400 transition active:scale-95 group"
         >
-          <Clock className="w-5 h-5 text-[#181D20] mb-1.5 group-hover:scale-110 transition" />
+          <Clock className="w-5 h-5 text-[#3F76C5] mb-1.5 group-hover:scale-110 transition" />
           <span className="text-xs font-bold text-slate-900">Attendance</span>
           <span className="text-[10px] text-slate-400 mt-0.5 font-medium">Check-In Log</span>
         </button>
@@ -158,7 +158,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           onClick={onOpenNotifications}
           className="p-3.5 rounded-[22px] bg-white border border-slate-200/90 shadow-xs flex flex-col items-center text-center hover:border-slate-400 transition active:scale-95 group"
         >
-          <Bell className="w-5 h-5 text-[#181D20] mb-1.5 group-hover:scale-110 transition" />
+          <Bell className="w-5 h-5 text-[#3F76C5] mb-1.5 group-hover:scale-110 transition" />
           <span className="text-xs font-bold text-slate-900">Notices</span>
           <span className="text-[10px] text-slate-400 mt-0.5 font-medium">Bulletins</span>
         </button>
@@ -390,6 +390,19 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       {/* Account Session Actions */}
       <div className="bg-white rounded-[26px] p-4 border border-slate-200/90 shadow-xs space-y-2">
         <button
+          onClick={() => {
+            window.location.hash = '#/admin';
+          }}
+          className="w-full py-3 px-4 rounded-2xl bg-gradient-to-r from-[#0A2A52] to-[#1D4ED8] hover:from-[#123a6b] hover:to-[#1a45b8] text-white font-bold text-xs flex items-center justify-between transition active:scale-98 shadow-[0_8px_20px_rgba(10,42,82,0.25)]"
+        >
+          <div className="flex items-center gap-2.5">
+            <LayoutDashboard className="w-4 h-4 text-blue-200" />
+            <span>Administration Dashboard</span>
+          </div>
+          <ChevronRight className="w-4 h-4 text-blue-200" />
+        </button>
+
+        <button
           onClick={onOpenAuthModal}
           className="w-full py-3 px-4 rounded-2xl bg-slate-50 border border-slate-200/80 hover:bg-slate-100/80 text-slate-800 font-bold text-xs flex items-center justify-between transition active:scale-98"
         >
@@ -435,7 +448,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   required
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-[#181D20] focus:outline-hidden text-slate-900 bg-slate-50/50"
+                  className="w-full px-3.5 py-2.5 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-[#3F76C5] focus:outline-hidden text-slate-900 bg-slate-50/50"
                 />
               </div>
 
@@ -446,7 +459,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-[#181D20] focus:outline-hidden text-slate-900 bg-slate-50/50"
+                  className="w-full px-3.5 py-2.5 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-[#3F76C5] focus:outline-hidden text-slate-900 bg-slate-50/50"
                 />
               </div>
 
@@ -457,7 +470,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   rows={2}
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-[#181D20] focus:outline-hidden text-slate-900 bg-slate-50/50"
+                  className="w-full px-3.5 py-2.5 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-[#3F76C5] focus:outline-hidden text-slate-900 bg-slate-50/50"
                 />
               </div>
 
@@ -467,14 +480,14 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   type="url"
                   value={photo}
                   onChange={(e) => setPhoto(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-[#181D20] focus:outline-hidden text-slate-900 bg-slate-50/50"
+                  className="w-full px-3.5 py-2.5 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-[#3F76C5] focus:outline-hidden text-slate-900 bg-slate-50/50"
                 />
               </div>
 
               <div className="pt-2">
                 <button
                   type="submit"
-                  className="w-full py-3 rounded-full bg-[#181D20] text-white font-bold text-sm hover:bg-black transition shadow-md active:scale-98"
+                  className="w-full py-3 rounded-full bg-[#3F76C5] text-white font-bold text-sm hover:bg-[#3566ac] transition shadow-md active:scale-98"
                 >
                   Save Changes
                 </button>

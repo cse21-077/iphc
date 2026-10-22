@@ -179,7 +179,6 @@ model user_roles {
 
 enum AppRole {
   MEMBER
-  SECURITY
   BRANCH_ADMIN
   MASTER_ADMIN
 }

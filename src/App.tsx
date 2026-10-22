@@ -27,6 +27,7 @@ import { MembershipCard } from './components/MembershipCard';
 import { RegistrationAuthModal } from './components/RegistrationAuthModal';
 import { SecurityPortal } from './components/SecurityPortal';
 import PWAInstallOverlay from './components/PWAInstallOverlay';
+import { AdminDashboard } from './components/admin/AdminDashboard';
 import {
   getCurrentUser,
   getMemberAttendance,
@@ -52,6 +53,23 @@ const attendanceRecordFromApi = (record: MemberAttendance): AttendanceRecord => 
 };
 
 export default function App() {
+  // Admin route: /admin (path) or #/admin (hash) renders the leadership dashboard
+  const isAdminLocation = () =>
+    window.location.hash.startsWith('#/admin') ||
+    window.location.pathname.replace(/\/+$/, '').endsWith('/admin');
+
+  const [isAdminRoute, setIsAdminRoute] = useState(isAdminLocation);
+
+  useEffect(() => {
+    const onLocationChange = () => setIsAdminRoute(isAdminLocation());
+    window.addEventListener('hashchange', onLocationChange);
+    window.addEventListener('popstate', onLocationChange);
+    return () => {
+      window.removeEventListener('hashchange', onLocationChange);
+      window.removeEventListener('popstate', onLocationChange);
+    };
+  }, []);
+
   // Navigation State
   const [activeTab, setActiveTab] = useState<'home' | 'calendar' | 'scan' | 'flg' | 'profile'>('home');
 
@@ -281,6 +299,22 @@ export default function App() {
     setIsAttendanceOpen(false);
     setIsMediaOpen(false);
   };
+
+  if (isAdminRoute) {
+    return (
+      <AdminDashboard
+        liveMembers={hasSession && member.id ? [member] : []}
+        onExit={() => {
+          if (window.location.pathname.replace(/\/+$/, '').endsWith('/admin')) {
+            window.location.pathname = '/';
+          } else {
+            window.location.hash = '';
+          }
+          window.scrollTo({ top: 0 });
+        }}
+      />
+    );
+  }
 
   if (!authReady) {
     return (

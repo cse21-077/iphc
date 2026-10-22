@@ -50,12 +50,12 @@ export const HomeView: React.FC<HomeViewProps> = ({
 
   return (
     <div className="min-h-[calc(100vh-8rem)] flex flex-col pb-28 max-w-md mx-auto space-y-5 px-4 pt-3">
-      {/* Top Header Row (Modeled after Reference Image: "Good Morning" eyebrow + Anastasia Sya + Clean Bell) */}
+      {/* Top Header Row: "Kgotso" greeting eyebrow + member name + clean bell */}
       <div className="pt-2 pb-1 flex items-start justify-between">
         <div>
           <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 mb-0.5">
-            <Sun className="w-3.5 h-3.5 text-amber-500" />
-            <span>Good Day • Kgotso</span>
+            <Sun className="w-3.5 h-3.5 text-[#3F76C5]" />
+            <span>Kgotso</span>
           </div>
           <h1 className="text-2xl font-black text-[#0A2A52] tracking-tight">
             {member.title} {member.name}

@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { getRegistrationOptions, RegistrationOptions, RegistrationPayload } from '../api';
+import React, { useState } from 'react';
+import { RegistrationPayload } from '../api';
+import { BRANCH_REGION_GROUPS } from '../data/branches';
 import {
   ArrowRight,
   Check,
@@ -23,7 +24,7 @@ import {
 interface RegistrationAuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onLogin: (email: string, password: string) => Promise<void>;
+  onLogin: (phone: string, password: string) => Promise<void>;
   onRegisterComplete: (registration: RegistrationPayload) => Promise<void>;
 }
 
@@ -42,6 +43,15 @@ const COUNTRY_DIALS: CountryDial[] = [
   { name: 'Mozambique', dial: '+258', flag: '🇲🇿' },
   { name: 'Eswatini', dial: '+268', flag: '🇸🇿' },
   { name: 'Zambia', dial: '+260', flag: '🇿🇲' },
+];
+
+const SECTION_OPTIONS = [
+  'BaPriest',
+  'Bo Ntate',
+  'Difate',
+  'Dinaledi',
+  'Badisa',
+  'Ayobaness',
 ];
 
 const MARRIAGE_OPTIONS = ['Single', 'Married', 'Divorced', 'Widowed'];
@@ -70,9 +80,6 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
   const [fullName, setFullName] = useState('');
   const [photoUrl, setPhotoUrl] = useState('');
   const [selectedBranch, setSelectedBranch] = useState('');
-  const [registrationOptions, setRegistrationOptions] = useState<RegistrationOptions | null>(null);
-  const [optionsError, setOptionsError] = useState('');
-  const [isLoadingOptions, setIsLoadingOptions] = useState(false);
 
   // Searchable branch picker state
   const [branchPickerOpen, setBranchPickerOpen] = useState(false);
@@ -88,7 +95,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
   const [age, setAge] = useState('');
   const [biography, setBiography] = useState('');
   const [qualifications, setQualifications] = useState('');
-  const [section, setSection] = useState('');
+  const [section, setSection] = useState('BaPriest');
   const [email, setEmail] = useState('');
   const [physicalAddress, setPhysicalAddress] = useState('');
   const [postalAddress, setPostalAddress] = useState('');
@@ -99,7 +106,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
   const [familyMembers, setFamilyMembers] = useState<Array<{ name: string; relation: string }>>([]);
 
   // Direct login state
-  const [loginEmailInput, setLoginEmailInput] = useState('');
+  const [loginPhoneInput, setLoginPhoneInput] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [formError, setFormError] = useState('');
@@ -115,34 +122,18 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
       )
     : COUNTRY_DIALS;
 
-  const filteredBranches = (registrationOptions?.branches ?? []).filter((branch) =>
-    branch.toLowerCase().includes(branchQuery.trim().toLowerCase())
-  );
-
-  useEffect(() => {
-    if (!isOpen) return;
-    let active = true;
-    setIsLoadingOptions(true);
-    setOptionsError('');
-    getRegistrationOptions()
-      .then((options) => {
-        if (!active) return;
-        setRegistrationOptions(options);
-        setSection((current) => options.sections.includes(current) ? current : '');
-        setSelectedBranch((current) => options.branches.includes(current) ? current : '');
-      })
-      .catch((error: unknown) => {
-        if (active) {
-          setOptionsError(error instanceof Error ? error.message : 'Could not load active branches and sections.');
-        }
-      })
-      .finally(() => {
-        if (active) setIsLoadingOptions(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [isOpen]);
+  const branchQueryTrimmed = branchQuery.trim().toLowerCase();
+  const filteredBranchGroups = BRANCH_REGION_GROUPS.map((group) => ({
+    region: group.region,
+    branches: branchQueryTrimmed
+      ? group.branches.filter(
+          (b) =>
+            b.toLowerCase().includes(branchQueryTrimmed) ||
+            group.region.toLowerCase().includes(branchQueryTrimmed)
+        )
+      : group.branches,
+  })).filter((group) => group.branches.length > 0);
+  const totalFilteredBranches = filteredBranchGroups.reduce((sum, g) => sum + g.branches.length, 0);
 
   if (!isOpen) return null;
 
@@ -208,7 +199,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
     setLoginError('');
     setIsSubmitting(true);
     try {
-      await onLogin(loginEmailInput.trim().toLowerCase(), loginPassword);
+      await onLogin(loginPhoneInput.trim(), loginPassword);
       onClose();
     } catch (error) {
       setLoginError(error instanceof Error ? error.message : 'Unable to sign in.');
@@ -319,12 +310,11 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
               >
                 Already a member? <span className="underline text-slate-900">Log in</span>
               </button>
-             
             </div>
           </div>
         )}
 
-        {/* SCREEN 2A: Account Login Details */}
+        {/* SCREEN 2A: Phone Number Input */}
         {mode === 'phone' && (
           <div className="py-4 space-y-5 animate-in fade-in duration-150">
             <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
@@ -332,28 +322,15 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
             </div>
 
             <div>
-              <h2 className="text-xl font-black text-[#0A2A52]">Create Your Login</h2>
+              <h2 className="text-xl font-black text-[#0A2A52]">Enter Phone Number</h2>
               <p className="text-xs text-slate-500 mt-1">
-                Sign in with your email and password. Your phone number is for member contact details.
+                Create a secure account with your phone number and a password.
               </p>
             </div>
 
             <form onSubmit={handleSendCode} className="space-y-4 pt-2">
               <div>
-                <label className={labelClass}>Login Email Address *</label>
-                <input
-                  type="email"
-                  required
-                  autoComplete="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="e.g. masego.tau@gmail.com"
-                  className={inputClass}
-                />
-              </div>
-
-              <div>
-                <label className={labelClass}>Member Contact Number *</label>
+                  <label className={labelClass}>Mobile Number *</label>
                 <div className="flex gap-2">
                   <CountryPicker idPrefix="reg" />
                   <input
@@ -368,7 +345,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
               </div>
 
               <div>
-                <label className={labelClass}>Login Password (at least 8 characters) *</label>
+                <label className={labelClass}>Password (at least 8 characters) *</label>
                 <input
                   type="password"
                   required
@@ -536,13 +513,9 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
                   <select
                     value={section}
                     onChange={(e) => setSection(e.target.value)}
-                    disabled={isLoadingOptions || !registrationOptions?.sections.length}
                     className={inputClass}
                   >
-                    <option value="">
-                      {isLoadingOptions ? 'Loading sections...' : 'Select an active section...'}
-                    </option>
-                    {registrationOptions?.sections.map((s) => (
+                    {SECTION_OPTIONS.map((s) => (
                       <option key={s} value={s}>
                         {s}
                       </option>
@@ -560,7 +533,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
                           autoFocus
                           value={branchQuery}
                           onChange={(e) => setBranchQuery(e.target.value)}
-                          placeholder={`Search ${registrationOptions?.branches.length ?? 0} active branches...`}
+                          placeholder="Type to filter 171 branches..."
                           className="w-full pl-8 pr-8 py-2.5 text-xs font-semibold text-slate-900 focus:outline-hidden"
                         />
                         <button
@@ -577,31 +550,36 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
                       </div>
 
                       <div className="max-h-56 overflow-y-auto">
-                        {filteredBranches.length > 0 ? (
-                          filteredBranches.map((branch) => (
-                            <button
-                              key={branch}
-                              type="button"
-                              onClick={() => {
-                                setSelectedBranch(branch);
-                                setBranchPickerOpen(false);
-                                setBranchQuery('');
-                              }}
-                              className={`w-full px-3 py-2 text-left text-xs font-semibold flex items-center justify-between transition ${
-                                selectedBranch === branch
-                                  ? 'bg-slate-900 text-white'
-                                  : 'text-slate-700 hover:bg-slate-100'
-                              }`}
-                            >
-                              <span>{branch}</span>
-                              {selectedBranch === branch && <Check className="w-3.5 h-3.5 text-white shrink-0" />}
-                            </button>
+                        {totalFilteredBranches > 0 ? (
+                          filteredBranchGroups.map((group) => (
+                            <div key={group.region}>
+                              <div className="px-3 py-1.5 bg-slate-50 text-[9px] font-black text-slate-400 uppercase tracking-widest sticky top-0">
+                                {group.region}
+                              </div>
+                              {group.branches.map((b) => (
+                                <button
+                                  key={`${group.region}-${b}`}
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedBranch(b);
+                                    setBranchPickerOpen(false);
+                                    setBranchQuery('');
+                                  }}
+                                  className={`w-full px-3 py-2 text-left text-xs font-semibold flex items-center justify-between transition ${
+                                    selectedBranch === b
+                                      ? 'bg-slate-900 text-white'
+                                      : 'text-slate-700 hover:bg-slate-100'
+                                  }`}
+                                >
+                                  <span>{b}</span>
+                                  {selectedBranch === b && <Check className="w-3.5 h-3.5 text-white shrink-0" />}
+                                </button>
+                              ))}
+                            </div>
                           ))
                         ) : (
                           <div className="p-3 text-xs text-slate-400 text-center">
-                            {registrationOptions?.branches.length
-                              ? `No active branches match "${branchQuery}"`
-                              : 'No active branches are available.'}
+                            No branches match "{branchQuery}"
                           </div>
                         )}
                       </div>
@@ -609,7 +587,6 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
                   ) : (
                     <button
                       type="button"
-                      disabled={isLoadingOptions || !registrationOptions?.branches.length}
                       onClick={() => setBranchPickerOpen(true)}
                       className={`w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold flex items-center justify-between gap-2 transition text-left ${
                         selectedBranch
@@ -617,24 +594,29 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
                           : 'text-slate-400'
                       } hover:bg-slate-100 focus:outline-hidden focus:ring-2 focus:ring-[#3F76C5]`}
                     >
-                      <span className="truncate">
-                        {selectedBranch || (isLoadingOptions ? 'Loading branches...' : 'Search & select your branch...')}
-                      </span>
+                      <span className="truncate">{selectedBranch || 'Search & select your branch...'}</span>
                       <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                     </button>
                   )}
                 </div>
               </div>
-              {optionsError && (
-                <p className="text-xs text-red-600 font-semibold bg-red-50 p-2.5 rounded-xl border border-red-100">
-                  Could not load registration options: {optionsError}
-                </p>
-              )}
 
               {/* Contact */}
               <h3 className={subHeadingClass}>
                 <Mail className="w-3.5 h-3.5" /> Contact Details
               </h3>
+
+              <div>
+                <label className={labelClass}>Email Address *</label>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="e.g. masego.tau@gmail.com"
+                  className={inputClass}
+                />
+              </div>
 
               <div>
                 <label className={labelClass}>Physical Address</label>
@@ -753,14 +735,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
 
             <button
               type="button"
-                disabled={
-                  !fullName.trim() ||
-                  !selectedBranch ||
-                  !section ||
-                  isLoadingOptions ||
-                  !registrationOptions?.branches.length ||
-                  !registrationOptions.sections.length
-                }
+                disabled={!fullName.trim() || !selectedBranch}
               onClick={() => setMode('review')}
               className="w-full py-3.5 rounded-full bg-[#0A2A52] text-white font-extrabold text-sm hover:bg-[#164A86] transition shadow-md active:scale-98 disabled:opacity-50 mt-2"
             >
@@ -899,20 +874,19 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
             <div>
               <h2 className="text-xl font-black text-[#0A2A52]">Log In to IPHC</h2>
               <p className="text-xs text-slate-500 mt-1">
-                Use your website email and password to sign in.
+                Enter registered phone number to switch accounts.
               </p>
             </div>
 
             <form onSubmit={handleDirectLoginSubmit} className="space-y-4 pt-1">
               <div>
-                <label className={labelClass}>Email Address *</label>
+                <label className={labelClass}>Registered Phone Number *</label>
                 <input
-                  type="email"
+                  type="tel"
                   required
-                  autoComplete="email"
-                  value={loginEmailInput}
-                  onChange={(e) => setLoginEmailInput(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-[#3F76C5]"
+                  value={loginPhoneInput}
+                  onChange={(e) => setLoginPhoneInput(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-mono font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-[#3F76C5]"
                 />
               </div>
 
@@ -942,16 +916,6 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
                 {isSubmitting ? 'Signing in…' : 'Log In'}
               </button>
             </form>
-            <button
-              type="button"
-              onClick={() => {
-                setLoginError('');
-                setMode('welcome');
-              }}
-              className="w-full text-xs font-bold text-[#0A2A52] hover:underline py-1"
-            >
-              Need an account? Register as a member
-            </button>
           </div>
         )}
       </div>
