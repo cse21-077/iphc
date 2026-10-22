@@ -24,7 +24,7 @@ import {
 interface RegistrationAuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onLogin: (phone: string, password: string) => Promise<void>;
+  onLogin: (identifier: string, password: string) => Promise<void>; // identifier = email or phone
   onRegisterComplete: (registration: RegistrationPayload) => Promise<void>;
 }
 
@@ -874,19 +874,21 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
             <div>
               <h2 className="text-xl font-black text-[#0A2A52]">Log In to IPHC</h2>
               <p className="text-xs text-slate-500 mt-1">
-                Enter registered phone number to switch accounts.
+                Enter your registered email address or phone number.
               </p>
             </div>
 
             <form onSubmit={handleDirectLoginSubmit} className="space-y-4 pt-1">
               <div>
-                <label className={labelClass}>Registered Phone Number *</label>
+                <label className={labelClass}>Email or Phone Number *</label>
                 <input
-                  type="tel"
+                  type="text"
                   required
+                  autoComplete="username"
+                  placeholder="you@example.com or +27 82 000 0000"
                   value={loginPhoneInput}
                   onChange={(e) => setLoginPhoneInput(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-mono font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-[#3F76C5]"
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-[#3F76C5]"
                 />
               </div>
 
