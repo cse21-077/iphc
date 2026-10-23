@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { RegistrationPayload } from '../api';
 import { BRANCH_REGION_GROUPS } from '../data/branches';
 import {
@@ -19,6 +19,7 @@ import {
   Plus,
   Trash2,
   ChevronDown,
+  KeyRound,
 } from 'lucide-react';
 
 interface RegistrationAuthModalProps {
@@ -26,6 +27,8 @@ interface RegistrationAuthModalProps {
   onClose: () => void;
   onLogin: (identifier: string, password: string) => Promise<void>; // identifier = email or phone
   onRegisterComplete: (registration: RegistrationPayload) => Promise<void>;
+  onRequestPasswordReset: (email: string) => Promise<void>;
+  onResetPassword: (token: string, password: string) => Promise<void>;
 }
 
 interface CountryDial {
@@ -70,8 +73,10 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
   onClose,
   onLogin,
   onRegisterComplete,
+  onRequestPasswordReset,
+  onResetPassword,
 }) => {
-  const [mode, setMode] = useState<'welcome' | 'phone' | 'about' | 'review' | 'confirmation' | 'direct_login'>('welcome');
+  const [mode, setMode] = useState<'welcome' | 'phone' | 'about' | 'review' | 'confirmation' | 'direct_login' | 'forgot_password' | 'reset_password'>('welcome');
 
   // Form State
   const [phone, setPhone] = useState('');
@@ -109,8 +114,17 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
   const [loginPhoneInput, setLoginPhoneInput] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [loginError, setLoginError] = useState('');
+  const [loginNotice, setLoginNotice] = useState('');
   const [formError, setFormError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Password reset state
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetToken, setResetToken] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [resetError, setResetError] = useState('');
+  const [resetSentTo, setResetSentTo] = useState('');
 
   const fullPhone = `${dialCode} ${localNumber}`.trim();
   const selectedCountry = COUNTRY_DIALS.find((c) => c.dial === dialCode) ?? COUNTRY_DIALS[0];
@@ -134,6 +148,26 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
       : group.branches,
   })).filter((group) => group.branches.length > 0);
   const totalFilteredBranches = filteredBranchGroups.reduce((sum, g) => sum + g.branches.length, 0);
+
+  // A Supabase recovery link lands on the app as /<path>#access_token=...&type=recovery.
+  // Pick that token up and switch straight into the set-new-password screen.
+  useEffect(() => {
+    if (!isOpen) return;
+    const applyRecoveryHash = () => {
+      const hash = window.location.hash.replace(/^#/, '');
+      if (!hash.includes('access_token')) return;
+      const params = new URLSearchParams(hash);
+      const token = params.get('access_token');
+      if (token && params.get('type') === 'recovery') {
+        setResetToken(token);
+        setResetError('');
+        setMode('reset_password');
+      }
+    };
+    applyRecoveryHash();
+    window.addEventListener('hashchange', applyRecoveryHash);
+    return () => window.removeEventListener('hashchange', applyRecoveryHash);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -197,12 +231,66 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
   const handleDirectLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
+    setLoginNotice('');
     setIsSubmitting(true);
     try {
       await onLogin(loginPhoneInput.trim(), loginPassword);
       onClose();
     } catch (error) {
       setLoginError(error instanceof Error ? error.message : 'Unable to sign in.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const openForgotPassword = () => {
+    setResetEmail('');
+    setResetError('');
+    setResetSentTo('');
+    setMode('forgot_password');
+  };
+
+  const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetError('');
+    setIsSubmitting(true);
+    try {
+      await onRequestPasswordReset(resetEmail.trim().toLowerCase());
+      setResetSentTo(resetEmail.trim());
+    } catch (error) {
+      setResetError(error instanceof Error ? error.message : 'Could not send the reset email. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleResetPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword.length < 8) {
+      setResetError('Password must be at least 8 characters.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setResetError('Passwords do not match.');
+      return;
+    }
+    setResetError('');
+    setIsSubmitting(true);
+    try {
+      await onResetPassword(resetToken, newPassword);
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+      setNewPassword('');
+      setConfirmPassword('');
+      setResetToken('');
+      setLoginPassword('');
+      setLoginNotice('Your password has been updated. Log in with your new password.');
+      setMode('direct_login');
+    } catch (error) {
+      setResetError(
+        error instanceof Error
+          ? error.message
+          : 'Could not update the password. The reset link may have expired — request a new one.'
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -902,7 +990,22 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
                   onChange={(e) => setLoginPassword(e.target.value)}
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-[#3F76C5]"
                 />
+                <div className="flex justify-end mt-1.5">
+                  <button
+                    type="button"
+                    onClick={openForgotPassword}
+                    className="text-[11px] font-bold text-[#3F76C5] hover:underline transition"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
               </div>
+
+              {loginNotice && (
+                <p className="text-xs text-emerald-700 font-semibold bg-emerald-50 p-2.5 rounded-xl border border-emerald-100">
+                  {loginNotice}
+                </p>
+              )}
 
               {loginError && (
                 <p className="text-xs text-red-600 font-semibold bg-red-50 p-2.5 rounded-xl border border-red-100">
@@ -916,6 +1019,129 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
                 className="w-full py-3.5 rounded-full bg-[#0A2A52] text-white font-extrabold text-sm hover:bg-[#164A86] transition shadow-md active:scale-98 disabled:opacity-50"
               >
                 {isSubmitting ? 'Signing in…' : 'Log In'}
+              </button>
+            </form>
+          </div>
+        )}
+
+        {/* FORGOT PASSWORD: request a reset link */}
+        {mode === 'forgot_password' && (
+          <div className="py-4 space-y-5 animate-in fade-in duration-150">
+            <div>
+              <h2 className="text-xl font-black text-[#0A2A52]">Reset Your Password</h2>
+              <p className="text-xs text-slate-500 mt-1">
+                Enter the email address registered on your membership account and we'll send you a link to set a new password.
+              </p>
+            </div>
+
+            {resetSentTo ? (
+              <div className="space-y-4 pt-1">
+                <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-800 leading-relaxed">
+                  If an account exists for <strong>{resetSentTo}</strong>, a password reset link is on its way.
+                  Open the email on this device and follow the link to choose a new password. Check your spam
+                  folder if it doesn't arrive within a few minutes.
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMode('direct_login')}
+                  className="w-full py-3.5 rounded-full bg-[#0A2A52] text-white font-extrabold text-sm hover:bg-[#164A86] transition shadow-md active:scale-98"
+                >
+                  Back to Log In
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleForgotPasswordSubmit} className="space-y-4 pt-1">
+                <div>
+                  <label className={labelClass}>Email Address *</label>
+                  <input
+                    type="email"
+                    required
+                    autoComplete="email"
+                    placeholder="you@example.com"
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-[#3F76C5]"
+                  />
+                </div>
+
+                {resetError && (
+                  <p className="text-xs text-red-600 font-semibold bg-red-50 p-2.5 rounded-xl border border-red-100">
+                    {resetError}
+                  </p>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full py-3.5 rounded-full bg-[#0A2A52] text-white font-extrabold text-sm hover:bg-[#164A86] transition shadow-md active:scale-98 disabled:opacity-50"
+                >
+                  {isSubmitting ? 'Sending…' : 'Send Reset Link'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setMode('direct_login')}
+                  className="w-full text-xs font-bold text-slate-600 hover:text-slate-900 py-1 transition"
+                >
+                  Back to Log In
+                </button>
+              </form>
+            )}
+          </div>
+        )}
+
+        {/* RESET PASSWORD: arrived via a recovery email link */}
+        {mode === 'reset_password' && (
+          <div className="py-4 space-y-5 animate-in fade-in duration-150">
+            <div className="text-center">
+              <div className="w-14 h-14 rounded-full bg-[#0A2A52]/5 border border-[#0A2A52]/10 text-[#0A2A52] mx-auto flex items-center justify-center mb-3">
+                <KeyRound className="w-7 h-7" />
+              </div>
+              <h2 className="text-xl font-black text-[#0A2A52]">Choose a New Password</h2>
+              <p className="text-xs text-slate-500 mt-1">
+                Enter a new password for your account. It must be at least 8 characters.
+              </p>
+            </div>
+
+            <form onSubmit={handleResetPasswordSubmit} className="space-y-4 pt-1">
+              <div>
+                <label className={labelClass}>New Password *</label>
+                <input
+                  type="password"
+                  required
+                  minLength={8}
+                  autoComplete="new-password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-[#3F76C5]"
+                />
+              </div>
+
+              <div>
+                <label className={labelClass}>Confirm New Password *</label>
+                <input
+                  type="password"
+                  required
+                  minLength={8}
+                  autoComplete="new-password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-[#3F76C5]"
+                />
+              </div>
+
+              {resetError && (
+                <p className="text-xs text-red-600 font-semibold bg-red-50 p-2.5 rounded-xl border border-red-100">
+                  {resetError}
+                </p>
+              )}
+
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full py-3.5 rounded-full bg-[#0A2A52] text-white font-extrabold text-sm hover:bg-[#164A86] transition shadow-md active:scale-98 disabled:opacity-50"
+              >
+                {isSubmitting ? 'Updating…' : 'Update Password'}
               </button>
             </form>
           </div>

@@ -354,6 +354,50 @@ app.post('/api/auth/logout', async (request, response, next) => {
   }
 });
 
+const appUrlFrom = (request: Request) => {
+  const configured = (process.env.APP_URL ?? '').trim().replace(/\/+$/, '');
+  if (configured) return configured;
+  const proto = String(request.headers['x-forwarded-proto'] ?? 'http').split(',')[0].trim();
+  const host = String(request.headers['x-forwarded-host'] ?? request.headers.host ?? '').split(',')[0].trim();
+  return host ? `${proto}://${host}` : '';
+};
+
+app.post('/api/auth/forgot-password', async (request, response, next) => {
+  try {
+    const email = typeof request.body?.email === 'string' ? request.body.email.trim().toLowerCase() : '';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return response.status(400).json({ error: 'Enter a valid email address.' });
+    }
+    const appUrl = appUrlFrom(request);
+    // Sends via Supabase Auth's built-in mailer; a RESEND_API_KEY can replace
+    // this path later (or Resend can be set as Supabase custom SMTP instead).
+    await supabaseRequest('/auth/v1/recover', {
+      method: 'POST',
+      body: { email, ...(appUrl ? { redirect_to: `${appUrl}/` } : {}) },
+    });
+    return response.json({ ok: true });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+app.post('/api/auth/reset-password', async (request, response, next) => {
+  try {
+    const accessToken = String(request.body?.accessToken ?? '');
+    const password = String(request.body?.password ?? '');
+    if (!accessToken) {
+      return response.status(400).json({ error: 'Reset token is missing. Please request a new reset link.' });
+    }
+    if (password.length < 8) {
+      return response.status(400).json({ error: 'Password must be at least 8 characters.' });
+    }
+    await supabaseRequest('/auth/v1/user', { method: 'PUT', token: accessToken, body: { password } });
+    return response.json({ ok: true });
+  } catch (error) {
+    return next(error);
+  }
+});
+
 app.get('/api/admin/users', requireUser, requireAdmin, async (request, response, next) => {
   try {
     const users = await prisma.app_users.findMany({ include: profileInclude, orderBy: { created_at: 'desc' } });

@@ -9,7 +9,6 @@ import {
 import {
   initialMemberProfile,
   initialCeremonies,
-  initialAttendanceRecords,
   initialPaymentRecords,
   initialNotifications,
 } from './data/initialData';
@@ -36,6 +35,8 @@ import {
   MemberAttendance,
   register,
   RegistrationPayload,
+  requestPasswordReset,
+  resetPasswordWithToken,
   SecurityProfile,
 } from './api';
 
@@ -106,10 +107,9 @@ export default function App() {
     return saved ? JSON.parse(saved) : initialCeremonies;
   });
 
-  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>(() => {
-    const saved = localStorage.getItem('iphc_mmuso_attendance');
-    return saved ? JSON.parse(saved) : initialAttendanceRecords;
-  });
+  // Attendance history always comes from the member API — never from seeded
+  // or cached data — so the screen reflects the real attendance records.
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
   const [attendanceLoadError, setAttendanceLoadError] = useState('');
 
   const [paymentRecords, setPaymentRecords] = useState<PaymentRecord[]>(() => {
@@ -206,10 +206,6 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('iphc_mmuso_ceremonies', JSON.stringify(ceremonies));
   }, [ceremonies]);
-
-  useEffect(() => {
-    localStorage.setItem('iphc_mmuso_attendance', JSON.stringify(attendanceRecords));
-  }, [attendanceRecords]);
 
   useEffect(() => {
     localStorage.setItem('iphc_mmuso_payments', JSON.stringify(paymentRecords));
@@ -332,6 +328,8 @@ export default function App() {
           onClose={() => undefined}
           onLogin={handleLoginWithEmail}
           onRegisterComplete={handleRegisterNewMember}
+          onRequestPasswordReset={(email) => requestPasswordReset(email).then(() => undefined)}
+          onResetPassword={(token, password) => resetPasswordWithToken(token, password).then(() => undefined)}
         />
       </div>
     );
@@ -480,6 +478,8 @@ export default function App() {
           onClose={() => setIsAuthModalOpen(false)}
           onLogin={handleLoginWithEmail}
           onRegisterComplete={handleRegisterNewMember}
+          onRequestPasswordReset={(email) => requestPasswordReset(email).then(() => undefined)}
+          onResetPassword={(token, password) => resetPasswordWithToken(token, password).then(() => undefined)}
         />
         {/* PWA Install Overlay: blocks web view until app is installed */}
         <PWAInstallOverlay />
