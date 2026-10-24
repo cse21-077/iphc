@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import express, { NextFunction, Request, Response } from 'express';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { AppRole, MaritalStatus, MemberStatus, PrismaClient } from '@prisma/client';
@@ -14,6 +14,8 @@ const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY ?? '';
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
 const ACCESS_COOKIE = 'iphc_access';
 const REFRESH_COOKIE = 'iphc_refresh';
+const RESEND_API_KEY = process.env.RESEND_API_KEY ?? '';
+const RESEND_FROM = process.env.RESEND_FROM_EMAIL ?? 'IPHC MMUSO <noreply@iphc-silo.com>';
 
 app.disable('x-powered-by');
 app.use(express.json({ limit: '1mb' }));
@@ -362,19 +364,93 @@ const appUrlFrom = (request: Request) => {
   return host ? `${proto}://${host}` : '';
 };
 
+const PASSWORD_RESET_TOKEN_TTL_MS = 60 * 60 * 1000;
+
+const hashResetToken = (token: string) => createHash('sha256').update(token).digest('hex');
+
+const sendPasswordResetEmail = async (to: string, displayName: string, resetUrl: string) => {
+  if (!RESEND_API_KEY) {
+    throw Object.assign(new Error('Set RESEND_API_KEY in the server environment.'), { status: 503 });
+  }
+  const safeName = displayName.trim() || 'Member';
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      from: RESEND_FROM,
+      to: [to],
+      subject: 'Reset your IPHC MMUSO password',
+      html: `
+        <div style="margin:0;padding:24px;background-color:#f4f7fb;font-family:Arial,Helvetica,sans-serif;">
+          <div style="max-width:480px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid #e2e8f0;">
+            <div style="background:#0A2A52;padding:24px;text-align:center;">
+              <div style="color:#ffffff;font-size:18px;font-weight:bold;letter-spacing:2px;">IPHC MMUSO</div>
+              <div style="color:#8FA8C8;font-size:11px;letter-spacing:2px;margin-top:4px;">IPHC • SILO ZUURBEKOM</div>
+            </div>
+            <div style="padding:28px 24px;">
+              <h1 style="margin:0 0 12px;font-size:18px;color:#0A2A52;">Reset your password</h1>
+              <p style="margin:0 0 16px;font-size:14px;color:#334155;line-height:1.6;">Hi ${safeName}, we received a request to reset the password for your membership account. Tap the button below to choose a new password:</p>
+              <div style="text-align:center;margin:24px 0;">
+                <a href="${resetUrl}" style="background:#D13138;color:#ffffff;text-decoration:none;padding:14px 28px;border-radius:999px;font-size:14px;font-weight:bold;display:inline-block;">Choose a new password</a>
+              </div>
+              <p style="margin:0 0 12px;font-size:12px;color:#64748b;line-height:1.6;">This link expires in 1 hour and can only be used once. If the button doesn't work, copy and paste this link into your browser:</p>
+              <p style="margin:0;font-size:12px;word-break:break-all;"><a href="${resetUrl}" style="color:#3F76C5;">${resetUrl}</a></p>
+              <p style="margin:20px 0 0;font-size:12px;color:#94a3b8;">If you didn't request a password reset, you can safely ignore this email — your password stays unchanged.</p>
+            </div>
+          </div>
+        </div>
+      `,
+      text: [
+        `Hi ${safeName},`,
+        '',
+        'We received a request to reset the password for your IPHC MMUSO membership account.',
+        '',
+        'Open this link on your phone to choose a new password:',
+        resetUrl,
+        '',
+        'The link expires in 1 hour and can only be used once.',
+        '',
+        "If you didn't request a password reset, you can safely ignore this email — your password stays unchanged.",
+        '',
+        'IPHC • Silo Zuurbekom',
+      ].join('\n'),
+    }),
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => null);
+    throw Object.assign(new Error(data?.message ?? 'Could not send the reset email. Please try again.'), { status: 502 });
+  }
+};
+
 app.post('/api/auth/forgot-password', async (request, response, next) => {
   try {
     const email = typeof request.body?.email === 'string' ? request.body.email.trim().toLowerCase() : '';
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return response.status(400).json({ error: 'Enter a valid email address.' });
     }
-    const appUrl = appUrlFrom(request);
-    // Sends via Supabase Auth's built-in mailer; a RESEND_API_KEY can replace
-    // this path later (or Resend can be set as Supabase custom SMTP instead).
-    await supabaseRequest('/auth/v1/recover', {
-      method: 'POST',
-      body: { email, ...(appUrl ? { redirect_to: `${appUrl}/` } : {}) },
-    });
+    // Supabase Auth identities for these accounts are phone-based, so the
+    // reset token is ours: emailed via Resend, stored hashed, single use.
+    const appUser = await prisma.app_users.findUnique({ where: { email } });
+    if (appUser?.is_active) {
+      const token = randomBytes(32).toString('base64url');
+      const now = new Date();
+      await prisma.$transaction([
+        prisma.password_reset_tokens.updateMany({
+          where: { user_id: appUser.id, used_at: null },
+          data: { used_at: now },
+        }),
+        prisma.password_reset_tokens.create({
+          data: {
+            id: randomUUID(),
+            user_id: appUser.id,
+            token_hash: hashResetToken(token),
+            expires_at: new Date(now.getTime() + PASSWORD_RESET_TOKEN_TTL_MS),
+          },
+        }),
+      ]);
+      const resetUrl = `${appUrlFrom(request)}/#reset_token=${token}`;
+      await sendPasswordResetEmail(email, appUser.display_name, resetUrl);
+    }
     return response.json({ ok: true });
   } catch (error) {
     return next(error);
@@ -383,15 +459,30 @@ app.post('/api/auth/forgot-password', async (request, response, next) => {
 
 app.post('/api/auth/reset-password', async (request, response, next) => {
   try {
-    const accessToken = String(request.body?.accessToken ?? '');
+    const token = String(request.body?.token ?? '');
     const password = String(request.body?.password ?? '');
-    if (!accessToken) {
+    if (!token) {
       return response.status(400).json({ error: 'Reset token is missing. Please request a new reset link.' });
     }
     if (password.length < 8) {
       return response.status(400).json({ error: 'Password must be at least 8 characters.' });
     }
-    await supabaseRequest('/auth/v1/user', { method: 'PUT', token: accessToken, body: { password } });
+    const record = await prisma.password_reset_tokens.findUnique({
+      where: { token_hash: hashResetToken(token) },
+      include: { app_users: true },
+    });
+    if (!record || record.used_at || record.expires_at < new Date()) {
+      return response.status(400).json({ error: 'This reset link is invalid or has expired. Please request a new one.' });
+    }
+    if (!record.app_users.is_active) {
+      return response.status(403).json({ error: 'This account is no longer active.' });
+    }
+    await supabaseRequest(`/auth/v1/admin/users/${record.app_users.auth_user_id}`, {
+      method: 'PUT',
+      admin: true,
+      body: { password },
+    });
+    await prisma.password_reset_tokens.update({ where: { id: record.id }, data: { used_at: new Date() } });
     return response.json({ ok: true });
   } catch (error) {
     return next(error);

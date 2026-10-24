@@ -121,8 +121,8 @@ export const logout = () => request<void>('/api/auth/logout', { method: 'POST' }
 export const requestPasswordReset = (email: string) =>
   request<{ ok: boolean }>('/api/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) });
 
-export const resetPasswordWithToken = (accessToken: string, password: string) =>
-  request<{ ok: boolean }>('/api/auth/reset-password', { method: 'POST', body: JSON.stringify({ accessToken, password }) });
+export const resetPasswordWithToken = (token: string, password: string) =>
+  request<{ ok: boolean }>('/api/auth/reset-password', { method: 'POST', body: JSON.stringify({ token, password }) });
 
 export const getAdminUsers = () => request<AdminUser[]>('/api/admin/users');
 

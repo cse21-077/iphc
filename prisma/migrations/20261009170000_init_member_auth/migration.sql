@@ -1,0 +1,4 @@
+-- The database schema was originally bootstrapped with `prisma db push`
+-- before migrations were adopted, so there is no recorded SQL for this
+-- migration. It is marked as applied to adopt the existing database into
+-- Prisma's migration history without replaying changes that already exist.

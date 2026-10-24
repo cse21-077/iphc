@@ -149,16 +149,16 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
   })).filter((group) => group.branches.length > 0);
   const totalFilteredBranches = filteredBranchGroups.reduce((sum, g) => sum + g.branches.length, 0);
 
-  // A Supabase recovery link lands on the app as /<path>#access_token=...&type=recovery.
+  // A reset email link lands on the app as /<path>#reset_token=<token>.
   // Pick that token up and switch straight into the set-new-password screen.
   useEffect(() => {
     if (!isOpen) return;
     const applyRecoveryHash = () => {
       const hash = window.location.hash.replace(/^#/, '');
-      if (!hash.includes('access_token')) return;
+      if (!hash.includes('reset_token')) return;
       const params = new URLSearchParams(hash);
-      const token = params.get('access_token');
-      if (token && params.get('type') === 'recovery') {
+      const token = params.get('reset_token');
+      if (token) {
         setResetToken(token);
         setResetError('');
         setMode('reset_password');
@@ -1142,6 +1142,14 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
                 className="w-full py-3.5 rounded-full bg-[#0A2A52] text-white font-extrabold text-sm hover:bg-[#164A86] transition shadow-md active:scale-98 disabled:opacity-50"
               >
                 {isSubmitting ? 'Updating…' : 'Update Password'}
+              </button>
+
+              <button
+                type="button"
+                onClick={openForgotPassword}
+                className="w-full text-xs font-bold text-slate-600 hover:text-slate-900 py-1 transition"
+              >
+                Request a new reset link
               </button>
             </form>
           </div>

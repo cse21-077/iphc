@@ -19,10 +19,23 @@ model app_users {
   is_active     Boolean        @default(true)
   created_at    DateTime       @default(now()) @db.Timestamptz(6)
   updated_at    DateTime       @db.Timestamptz(6)
-  audit_log     audit_log[]
-  branch_admins branch_admins?
-  members       members?
-  user_roles    user_roles[]
+  audit_log             audit_log[]
+  branch_admins         branch_admins?
+  members               members?
+  password_reset_tokens password_reset_tokens[]
+  user_roles            user_roles[]
+}
+
+model password_reset_tokens {
+  id         String    @id @db.Uuid
+  user_id    String    @db.Uuid
+  token_hash String    @unique
+  expires_at DateTime  @db.Timestamptz(6)
+  used_at    DateTime? @db.Timestamptz(6)
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  app_users  app_users @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id])
 }
 
 model attendance {
