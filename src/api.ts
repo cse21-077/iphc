@@ -128,3 +128,38 @@ export const getAdminUsers = () => request<AdminUser[]>('/api/admin/users');
 
 export const createAdminUser = (payload: RegistrationPayload) =>
   request<AdminUser>('/api/admin/users', { method: 'POST', body: JSON.stringify(payload) });
+
+export interface AdminEvent {
+  id: string;
+  title: string;
+  category: string;
+  description: string;
+  location: string;
+  startsAt: string;
+  endsAt: string | null;
+  isPublished: boolean;
+  archivedAt: string | null;
+  createdAt: string;
+  branch: string | null;
+}
+
+export interface AdminEventInput {
+  title: string;
+  category: string;
+  description?: string;
+  location?: string;
+  startsAt: string;
+  endsAt?: string | null;
+  isPublished?: boolean;
+}
+
+export const getAdminEvents = () => request<AdminEvent[]>('/api/admin/events');
+
+export const createAdminEvent = (payload: AdminEventInput) =>
+  request<AdminEvent>('/api/admin/events', { method: 'POST', body: JSON.stringify(payload) });
+
+export const setAdminEventPublished = (id: string, isPublished: boolean) =>
+  request<AdminEvent>(`/api/admin/events/${id}/publish`, { method: 'POST', body: JSON.stringify({ isPublished }) });
+
+export const archiveAdminEvent = (id: string) =>
+  request<AdminEvent>(`/api/admin/events/${id}/archive`, { method: 'POST', body: JSON.stringify({}) });

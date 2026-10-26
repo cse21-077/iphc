@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   LayoutDashboard,
   Users,
+  UserCog,
   CalendarDays,
   ScanLine,
   CreditCard,
@@ -35,6 +36,7 @@ import {
 } from '../../data/adminData';
 import { initialNotifications } from '../../data/initialData';
 import { StatCard } from './StatCard';
+import { AdminUsersSection } from './AdminUsersSection';
 import { RegistrationsBarChart, AttendanceHeatmap, CardsGauge, ProgressRow, AnimatedNumber } from './AdminCharts';
 import {
   MembershipSection,
@@ -49,9 +51,17 @@ import {
 const NAVY = '#0A2A52';
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
+import {
+  AdminUser,
+  createAdminUser,
+  getAdminUsers,
+  RegistrationPayload,
+} from '../../api';
+
 type SectionId =
   | 'dashboard'
   | 'membership'
+  | 'accounts'
   | 'ceremonies'
   | 'attendance'
   | 'payments'
@@ -67,7 +77,8 @@ interface AdminDashboardProps {
 const NAV_ITEMS: Array<{ id: SectionId; icon: React.ElementType; label: string }> = [
   { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { id: 'membership', icon: Users, label: 'Membership' },
-  { id: 'ceremonies', icon: CalendarDays, label: 'Ceremonies' },
+  { id: 'accounts', icon: UserCog, label: 'Accounts' },
+  { id: 'ceremonies', icon: CalendarDays, label: 'Silo Events' },
   { id: 'attendance', icon: ScanLine, label: 'Attendance' },
   { id: 'payments', icon: CreditCard, label: 'Payments' },
   { id: 'flg', icon: BriefcaseBusiness, label: 'FLG Empire' },
@@ -77,12 +88,66 @@ const NAV_ITEMS: Array<{ id: SectionId; icon: React.ElementType; label: string }
 
 const SECTION_META: Record<Exclude<SectionId, 'dashboard'>, { title: string; blurb: string }> = {
   membership: { title: 'Membership', blurb: 'Registration & member management' },
-  ceremonies: { title: 'Ceremonies', blurb: 'Silo calendar & pre-registration' },
+  accounts: { title: 'Accounts', blurb: 'User accounts, roles & access' },
+  ceremonies: { title: 'Silo Events', blurb: 'Services, ceremonies & gatherings' },
   attendance: { title: 'Attendance', blurb: 'QR check-ins & trends' },
   payments: { title: 'Payments', blurb: 'Contributions & reconciliation' },
   flg: { title: 'FLG Empire', blurb: 'Member business directory' },
   media: { title: 'Media', blurb: 'Sermons, events & archive' },
   reports: { title: 'Reports', blurb: 'Leadership reporting & exports' },
+};
+
+// User accounts come from the live API — master administrators only.
+const AccountsSection: React.FC = () => {
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+
+  const loadUsers = async () => {
+    try {
+      setLoadError('');
+      setUsers(await getAdminUsers());
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : 'Could not load user accounts.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadUsers();
+  }, []);
+
+  const handleCreateUser = async (payload: RegistrationPayload) => {
+    await createAdminUser(payload);
+    await loadUsers();
+  };
+
+  if (isLoading) {
+    return (
+      <div className="bg-white rounded-2xl border border-slate-100 py-14 text-center text-slate-400 text-xs font-semibold">
+        Loading user accounts…
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="bg-white rounded-2xl border border-slate-100 py-14 text-center">
+        <p className="text-xs font-semibold text-red-600">{loadError}</p>
+        <p className="mt-2 text-[11px] font-semibold text-slate-400">Sign in with a master administrator account to manage accounts.</p>
+        <button
+          type="button"
+          onClick={() => void loadUsers()}
+          className="mt-3 text-xs font-extrabold text-[#3F76C5] hover:underline"
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
+
+  return <AdminUsersSection users={users} onCreateUser={handleCreateUser} />;
 };
 
 const STATUS_STYLES: Record<RegistrationRow['status'], string> = {
@@ -188,6 +253,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ liveMembers, onE
     switch (activeSection) {
       case 'membership':
         return <MembershipSection key="membership" />;
+      case 'accounts':
+        return <AccountsSection key="accounts" />;
       case 'ceremonies':
         return <CeremoniesSection key="ceremonies" />;
       case 'attendance':

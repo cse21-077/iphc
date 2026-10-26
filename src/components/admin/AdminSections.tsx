@@ -1,7 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import {
-  Search,
   Download,
   QrCode,
   UserCheck,
@@ -10,6 +9,16 @@ import {
   MapPin,
   PlayCircle,
   Lock,
+  LayoutGrid,
+  List,
+  Plus,
+  X,
+  CalendarDays,
+  Clock3,
+  Eye,
+  EyeOff,
+  Archive,
+  Sparkles,
 } from 'lucide-react';
 import {
   DEMO_MEMBERS,
@@ -24,7 +33,15 @@ import {
   formatNumber,
 } from '../../data/adminData';
 import { initialBusinesses, initialMediaItems, paymentCategories } from '../../data/initialData';
-import { RegistrationsBarChart, AttendanceHeatmap, ProgressRow, AnimatedNumber } from './AdminCharts';
+import { RegistrationsBarChart, AttendanceHeatmap, AnimatedNumber } from './AdminCharts';
+import { SearchInput, ViewToggle } from './ViewControls';
+import {
+  AdminEvent,
+  archiveAdminEvent,
+  createAdminEvent,
+  getAdminEvents,
+  setAdminEventPublished,
+} from '../../api';
 
 const NAVY = '#0A2A52';
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
@@ -67,6 +84,7 @@ const SectionShell: React.FC<{
 // ---------------------------------------------------------------------------
 export const MembershipSection: React.FC = () => {
   const [query, setQuery] = useState('');
+  const [view, setView] = useState<'list' | 'grid'>('list');
   const [statusFilter, setStatusFilter] = useState<string>('All');
 
   const filtered = useMemo(() => {
@@ -95,32 +113,33 @@ export const MembershipSection: React.FC = () => {
   return (
     <SectionShell title="Membership Management" description="Registered members across all branches and regions">
       <div className="flex flex-col md:flex-row md:items-center gap-3 mb-4">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search name, membership no. or branch…"
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-white border border-slate-200 text-xs font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#3F76C5]/40 focus:border-[#3F76C5] transition"
-          />
-        </div>
-        <div className="flex gap-2">
-          {(['All', 'Verified', 'New', 'Pending'] as const).map((s) => (
-            <button
-              key={s}
-              onClick={() => setStatusFilter(s)}
-              className={`px-3 py-2 rounded-xl text-[11px] font-extrabold border transition ${
-                statusFilter === s
-                  ? 'bg-[#3F76C5] text-white border-[#3F76C5] shadow-[0_6px_16px_rgba(63,118,197,0.3)]'
-                  : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
-              }`}
-            >
-              {s} <span className="opacity-70">({counts[s]})</span>
-            </button>
-          ))}
+        <SearchInput
+          value={query}
+          onChange={setQuery}
+          placeholder="Search name, membership no. or branch…"
+          className="flex-1 max-w-sm"
+        />
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex gap-2 flex-wrap">
+            {(['All', 'Verified', 'New', 'Pending'] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setStatusFilter(s)}
+                className={`px-3 py-2 rounded-xl text-[11px] font-extrabold border transition ${
+                  statusFilter === s
+                    ? 'bg-[#3F76C5] text-white border-[#3F76C5] shadow-[0_6px_16px_rgba(63,118,197,0.3)]'
+                    : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
+                }`}
+              >
+                {s} <span className="opacity-70">({counts[s]})</span>
+              </button>
+            ))}
+          </div>
+          <ViewToggle view={view} onChange={setView} />
         </div>
       </div>
 
+      {view === 'list' ? (
       <div className="bg-white rounded-2xl border border-slate-100 shadow-[0_4px_16px_rgba(15,42,82,0.05)] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-xs min-w-[640px]">
@@ -167,53 +186,471 @@ export const MembershipSection: React.FC = () => {
           </table>
         </div>
       </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          {filtered.map((m, i) => (
+            <motion.div
+              key={m.id}
+              variants={rowVariants}
+              initial="hidden"
+              animate="show"
+              transition={{ delay: i * 0.03 }}
+              className="bg-white rounded-2xl border border-slate-100 shadow-[0_4px_16px_rgba(15,42,82,0.05)] p-5"
+            >
+              <div className="flex items-start gap-3">
+                <div className="w-11 h-11 rounded-2xl bg-[#0A2A52] text-white flex items-center justify-center font-extrabold text-sm shrink-0">
+                  {m.name.split(' ').filter(Boolean).map((word) => word[0]).slice(0, 2).join('').toUpperCase()}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-sm font-extrabold text-slate-900 truncate">{m.name}</h3>
+                  <p className="text-[11px] font-mono font-semibold text-slate-400 truncate">{m.membershipNumber}</p>
+                </div>
+                <span className={`shrink-0 inline-block px-2 py-1 rounded-full text-[9px] font-extrabold border ${STATUS_STYLES[m.status]}`}>
+                  {m.status}
+                </span>
+              </div>
+              <div className="mt-4 pt-3 border-t border-slate-50 space-y-1.5 text-[11px] font-semibold text-slate-500">
+                <p className="flex items-center gap-2"><MapPin className="w-3.5 h-3.5 text-[#3F76C5] shrink-0" />{m.branch}<span className="text-slate-400">• {m.region}</span></p>
+                <p className="flex items-center gap-2"><UserCheck className="w-3.5 h-3.5 text-[#3F76C5] shrink-0" />{m.section}</p>
+                <p className="flex items-center gap-2"><CalendarDays className="w-3.5 h-3.5 text-[#3F76C5] shrink-0" />Registered {m.registeredAt}</p>
+              </div>
+            </motion.div>
+          ))}
+          {filtered.length === 0 && (
+            <div className="sm:col-span-2 xl:col-span-4 bg-white rounded-2xl border border-slate-100 py-10 text-center text-slate-400 text-xs font-semibold">
+              No members match “{query}”.
+            </div>
+          )}
+        </div>
+      )}
     </SectionShell>
   );
 };
 
 // ---------------------------------------------------------------------------
-// Ceremonies
+// Silo Events
 // ---------------------------------------------------------------------------
+const EVENT_CATEGORIES = ['Service', 'Ceremony', 'Pilgrimage', 'Meeting', 'Special'];
+
+const EVENT_TEMPLATES = [
+  { id: 'wednesday', label: 'Wednesday Service', title: 'Wednesday Service', category: 'Service', startTime: '19:00', endTime: '22:00', weekday: 3 },
+  { id: 'friday', label: 'Friday Service', title: 'Friday Service', category: 'Service', startTime: '19:00', endTime: '22:00', weekday: 5 },
+  { id: 'saturday', label: 'Saturday Service', title: 'Saturday Service', category: 'Service', startTime: '09:00', endTime: '16:00', weekday: 6 },
+];
+
+const nextWeekdayDate = (weekday: number) => {
+  const date = new Date();
+  const offset = (weekday - date.getDay() + 7) % 7;
+  date.setDate(date.getDate() + offset);
+  return date.toISOString().slice(0, 10);
+};
+
+const formatEventDateTime = (value: string) =>
+  new Intl.DateTimeFormat('en-ZA', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value));
+
+const formatEventTime = (value: string) =>
+  new Intl.DateTimeFormat('en-ZA', { hour: '2-digit', minute: '2-digit' }).format(new Date(value));
+
+const emptyEventForm = {
+  title: '',
+  category: 'Service',
+  date: '',
+  startTime: '',
+  endTime: '',
+  location: 'Zuurbekom Headquarters (Silo)',
+  description: '',
+  isPublished: true,
+};
+
 export const CeremoniesSection: React.FC = () => {
-  const max = Math.max(...UPCOMING_CEREMONIES.map((c) => c.registrations));
+  const [events, setEvents] = useState<AdminEvent[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [query, setQuery] = useState('');
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [form, setForm] = useState(emptyEventForm);
+  const [isSaving, setIsSaving] = useState(false);
+  const [actionError, setActionError] = useState('');
+
+  const loadEvents = async () => {
+    try {
+      setLoadError('');
+      const list = await getAdminEvents();
+      setEvents(list);
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : 'Could not load events.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadEvents();
+  }, []);
+
+  const filteredEvents = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return events;
+    return events.filter((event) =>
+      [event.title, event.category, event.location]
+        .some((value) => value.toLowerCase().includes(q))
+    );
+  }, [query, events]);
+
+  const openCreateModal = (template?: (typeof EVENT_TEMPLATES)[number]) => {
+    setActionError('');
+    setForm(
+      template
+        ? {
+            ...emptyEventForm,
+            title: template.title,
+            category: template.category,
+            date: nextWeekdayDate(template.weekday),
+            startTime: template.startTime,
+            endTime: template.endTime,
+          }
+        : { ...emptyEventForm, date: nextWeekdayDate(3) }
+    );
+    setShowCreateModal(true);
+  };
+
+  const submitCreate = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!form.title.trim() || !form.date || !form.startTime) return;
+    setIsSaving(true);
+    setActionError('');
+    try {
+      const created = await createAdminEvent({
+        title: form.title.trim(),
+        category: form.category,
+        description: form.description.trim(),
+        location: form.location.trim(),
+        startsAt: new Date(`${form.date}T${form.startTime}`).toISOString(),
+        endsAt: form.endTime ? new Date(`${form.date}T${form.endTime}`).toISOString() : null,
+        isPublished: form.isPublished,
+      });
+      setEvents((prev) => [created, ...prev]);
+      setShowCreateModal(false);
+      setForm({ ...emptyEventForm });
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Could not create the event.');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const togglePublished = async (event: AdminEvent) => {
+    setActionError('');
+    try {
+      const updated = await setAdminEventPublished(event.id, !event.isPublished);
+      setEvents((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Could not update the event.');
+    }
+  };
+
+  const archiveEvent = async (event: AdminEvent) => {
+    setActionError('');
+    try {
+      const updated = await archiveAdminEvent(event.id);
+      setEvents((prev) => [...prev.filter((item) => item.id !== updated.id), updated]);
+    } catch (error) {
+      setActionError(error instanceof Error ? error.message : 'Could not archive the event.');
+    }
+  };
+
+  const inputClass = 'w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-semibold text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#3F76C5]/40 focus:border-[#3F76C5] transition';
+
   return (
-    <SectionShell title="Silo Ceremony Registrations" description="Pre-registration and check-in volumes for upcoming ceremonies">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {UPCOMING_CEREMONIES.map((c, i) => (
-          <motion.div
-            key={c.id}
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.06, duration: 0.4, ease: EASE }}
-            className="bg-white rounded-2xl border border-slate-100 shadow-[0_4px_16px_rgba(15,42,82,0.05)] p-5"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <h3 className="text-sm font-extrabold text-slate-900 truncate">{c.title}</h3>
-                <p className="text-[11px] font-semibold text-slate-400 mt-0.5">{c.dateRange} • {c.location}</p>
-              </div>
-              <span className="shrink-0 text-[10px] font-extrabold text-[#3F76C5] bg-blue-50 rounded-full px-2.5 py-1">
-                {formatNumber(c.registrations)} registered
-              </span>
-            </div>
-            <div className="mt-4">
-              <ProgressRow
-                label="Pre-registration"
-                value={c.registrations}
-                max={max}
-                color="#3F76C5"
-                delay={i * 0.06}
-              />
-            </div>
-            {c.checkedIn > 0 && (
-              <p className="mt-3 text-[11px] font-bold text-emerald-600 flex items-center gap-1.5">
-                <UserCheck className="w-3.5 h-3.5" />
-                {formatNumber(c.checkedIn)} checked in ({Math.round((c.checkedIn / c.registrations) * 100)}% turnout)
-              </p>
-            )}
-          </motion.div>
-        ))}
+    <SectionShell title="Silo Events" description="Create and manage services, ceremonies and gatherings — published events appear in the security check-in portal">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
+        <SearchInput
+          value={query}
+          onChange={setQuery}
+          placeholder="Search events by title, category or location…"
+          className="w-full md:w-80"
+        />
+        <button
+          type="button"
+          onClick={() => openCreateModal()}
+          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[#0A2A52] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#123d71] transition"
+        >
+          <Plus className="w-4 h-4" />
+          Create event
+        </button>
       </div>
+
+      {/* Service templates */}
+      <div className="mb-5">
+        <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-slate-400 mb-2 flex items-center gap-1.5">
+          <Sparkles className="w-3 h-3" /> Quick templates
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {EVENT_TEMPLATES.map((template) => (
+            <button
+              key={template.id}
+              type="button"
+              onClick={() => openCreateModal(template)}
+              className="inline-flex items-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-3.5 py-2.5 text-[11px] font-extrabold text-[#0A2A52] transition hover:bg-blue-100 active:scale-95"
+            >
+              <Clock3 className="w-3.5 h-3.5 text-[#3F76C5]" />
+              {template.label}
+              <span className="font-bold text-slate-500">
+                {template.startTime}–{template.endTime}
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {actionError && (
+        <p className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-700">
+          {actionError}
+        </p>
+      )}
+
+      {/* Event cards */}
+      {isLoading ? (
+        <div className="bg-white rounded-2xl border border-slate-100 py-14 text-center text-slate-400 text-xs font-semibold">
+          Loading Silo events…
+        </div>
+      ) : loadError ? (
+        <div className="bg-white rounded-2xl border border-slate-100 py-14 text-center">
+          <p className="text-xs font-semibold text-red-600">{loadError}</p>
+          <button
+            type="button"
+            onClick={() => void loadEvents()}
+            className="mt-3 text-xs font-extrabold text-[#3F76C5] hover:underline"
+          >
+            Try again
+          </button>
+        </div>
+      ) : filteredEvents.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-5 py-12 text-center">
+          <CalendarDays className="mx-auto h-8 w-8 text-slate-300" />
+          <h4 className="mt-3 text-sm font-extrabold text-slate-800">
+            {query ? 'No events match this search' : 'No Silo events yet'}
+          </h4>
+          <p className="mx-auto mt-1 max-w-xs text-xs leading-relaxed text-slate-500">
+            {query
+              ? 'Try a different search term.'
+              : 'Create your first event above, or start from a service template.'}
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {filteredEvents.map((event, i) => {
+            const isArchived = Boolean(event.archivedAt);
+            return (
+              <motion.div
+                key={event.id}
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: Math.min(i * 0.04, 0.4), duration: 0.35, ease: EASE }}
+                className={`bg-white rounded-2xl border border-slate-100 shadow-[0_4px_16px_rgba(15,42,82,0.05)] p-5 ${isArchived ? 'opacity-60' : ''}`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-extrabold text-slate-900 truncate">{event.title}</h3>
+                    <p className="text-[11px] font-bold text-[#3F76C5] mt-0.5">{event.category}</p>
+                  </div>
+                  {isArchived ? (
+                    <span className="shrink-0 text-[9px] font-extrabold text-slate-500 bg-slate-100 rounded-full px-2.5 py-1">
+                      Archived
+                    </span>
+                  ) : event.isPublished ? (
+                    <span className="shrink-0 text-[9px] font-extrabold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2.5 py-1">
+                      Published
+                    </span>
+                  ) : (
+                    <span className="shrink-0 text-[9px] font-extrabold text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2.5 py-1">
+                      Hidden
+                    </span>
+                  )}
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-slate-50 space-y-1.5 text-[11px] font-semibold text-slate-500">
+                  <p className="flex items-center gap-2">
+                    <CalendarDays className="w-3.5 h-3.5 text-[#3F76C5] shrink-0" />
+                    {formatEventDateTime(event.startsAt)}
+                    {event.endsAt && ` – ${formatEventTime(event.endsAt)}`}
+                  </p>
+                  <p className="flex items-center gap-2">
+                    <MapPin className="w-3.5 h-3.5 text-[#3F76C5] shrink-0" />
+                    <span className="truncate">{event.location}</span>
+                  </p>
+                </div>
+
+                {!isArchived && (
+                  <div className="mt-4 pt-3 border-t border-slate-50 flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => void togglePublished(event)}
+                      className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[10px] font-extrabold border transition ${
+                        event.isPublished
+                          ? 'border-slate-200 text-slate-600 bg-white hover:bg-slate-50'
+                          : 'border-blue-200 text-[#3F76C5] bg-blue-50 hover:bg-blue-100'
+                      }`}
+                    >
+                      {event.isPublished ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                      {event.isPublished ? 'Hide' : 'Publish'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void archiveEvent(event)}
+                      className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-[10px] font-extrabold border border-slate-200 text-slate-500 bg-white hover:bg-red-50 hover:text-red-700 hover:border-red-200 transition"
+                    >
+                      <Archive className="w-3 h-3" />
+                      Archive
+                    </button>
+                  </div>
+                )}
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Create event modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <CalendarDays className="w-4 h-4 text-[#3F76C5]" />
+                <h3 className="text-base font-extrabold text-slate-900">Create Silo Event</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCreateModal(false)}
+                className="p-1 rounded-full text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={submitCreate} className="mt-4 space-y-3.5">
+              <label className="block">
+                <span className="mb-1.5 block text-[11px] font-extrabold text-slate-600 uppercase tracking-wider">Title</span>
+                <input
+                  required
+                  value={form.title}
+                  onChange={(e) => setForm({ ...form, title: e.target.value })}
+                  placeholder="e.g. Wednesday Service"
+                  className={inputClass}
+                />
+              </label>
+
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block">
+                  <span className="mb-1.5 block text-[11px] font-extrabold text-slate-600 uppercase tracking-wider">Category</span>
+                  <select
+                    value={form.category}
+                    onChange={(e) => setForm({ ...form, category: e.target.value })}
+                    className={inputClass}
+                  >
+                    {EVENT_CATEGORIES.map((category) => (
+                      <option key={category} value={category}>{category}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="mb-1.5 block text-[11px] font-extrabold text-slate-600 uppercase tracking-wider">Date</span>
+                  <input
+                    required
+                    type="date"
+                    value={form.date}
+                    onChange={(e) => setForm({ ...form, date: e.target.value })}
+                    className={inputClass}
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1.5 block text-[11px] font-extrabold text-slate-600 uppercase tracking-wider">Starts</span>
+                  <input
+                    required
+                    type="time"
+                    value={form.startTime}
+                    onChange={(e) => setForm({ ...form, startTime: e.target.value })}
+                    className={inputClass}
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1.5 block text-[11px] font-extrabold text-slate-600 uppercase tracking-wider">Ends</span>
+                  <input
+                    type="time"
+                    value={form.endTime}
+                    onChange={(e) => setForm({ ...form, endTime: e.target.value })}
+                    className={inputClass}
+                  />
+                </label>
+              </div>
+
+              <label className="block">
+                <span className="mb-1.5 block text-[11px] font-extrabold text-slate-600 uppercase tracking-wider">Location</span>
+                <input
+                  value={form.location}
+                  onChange={(e) => setForm({ ...form, location: e.target.value })}
+                  placeholder="Zuurbekom Headquarters (Silo)"
+                  className={inputClass}
+                />
+              </label>
+
+              <label className="block">
+                <span className="mb-1.5 block text-[11px] font-extrabold text-slate-600 uppercase tracking-wider">Description (optional)</span>
+                <textarea
+                  rows={3}
+                  value={form.description}
+                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  placeholder="Short note about this event…"
+                  className={`${inputClass} resize-none`}
+                />
+              </label>
+
+              <label className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3">
+                <span className="text-xs font-extrabold text-slate-700">Publish immediately</span>
+                <input
+                  type="checkbox"
+                  checked={form.isPublished}
+                  onChange={(e) => setForm({ ...form, isPublished: e.target.checked })}
+                  className="h-4 w-4 accent-[#3F76C5]"
+                />
+              </label>
+              <p className="text-[10px] font-semibold text-slate-400 -mt-2">
+                Published events are visible to the security team for member check-in at the gates.
+              </p>
+
+              {actionError && (
+                <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-700">
+                  {actionError}
+                </p>
+              )}
+
+              <div className="pt-2 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(false)}
+                  className="flex-1 py-3 rounded-2xl bg-slate-100 text-slate-700 font-bold text-sm hover:bg-slate-200 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="flex-1 py-3 rounded-2xl bg-[#0A2A52] text-white font-bold text-sm hover:bg-[#123d71] transition disabled:opacity-50"
+                >
+                  {isSaving ? 'Creating…' : 'Create event'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </SectionShell>
   );
 };
@@ -221,7 +658,20 @@ export const CeremoniesSection: React.FC = () => {
 // ---------------------------------------------------------------------------
 // Attendance
 // ---------------------------------------------------------------------------
-export const AttendanceSection: React.FC = () => (
+export const AttendanceSection: React.FC = () => {
+  const [query, setQuery] = useState('');
+  const [view, setView] = useState<'list' | 'grid'>('list');
+
+  const filteredCheckins = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return RECENT_CHECKINS;
+    return RECENT_CHECKINS.filter((c) =>
+      [c.memberName, c.membershipNumber, c.service, c.branch]
+        .some((value) => value.toLowerCase().includes(q))
+    );
+  }, [query]);
+
+  return (
   <SectionShell title="Attendance & Check-Ins" description="QR scan activity at branch services and Silo ceremonies">
     <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 mb-4">
       <div className="xl:col-span-2 bg-white rounded-2xl border border-slate-100 shadow-[0_4px_16px_rgba(15,42,82,0.05)] p-5">
@@ -239,7 +689,20 @@ export const AttendanceSection: React.FC = () => (
     </div>
 
     <div className="bg-white rounded-2xl border border-slate-100 shadow-[0_4px_16px_rgba(15,42,82,0.05)] overflow-hidden">
-      <h3 className="text-sm font-extrabold px-5 pt-5 pb-3">Latest QR Check-Ins</h3>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 px-5 pt-5 pb-3">
+        <h3 className="text-sm font-extrabold">Latest QR Check-Ins</h3>
+        <div className="flex flex-wrap items-center gap-2">
+          <SearchInput
+            value={query}
+            onChange={setQuery}
+            placeholder="Search member, service or branch…"
+            className="w-full md:w-64"
+          />
+          <ViewToggle view={view} onChange={setView} />
+        </div>
+      </div>
+
+      {view === 'list' ? (
       <div className="overflow-x-auto">
         <table className="w-full text-xs min-w-[640px]">
           <thead>
@@ -252,7 +715,7 @@ export const AttendanceSection: React.FC = () => (
             </tr>
           </thead>
           <motion.tbody variants={listVariants} initial="hidden" animate="show">
-            {RECENT_CHECKINS.map((c) => (
+            {filteredCheckins.map((c) => (
               <motion.tr key={c.id} variants={rowVariants} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/60 transition">
                 <td className="py-3 px-5 font-bold text-slate-800 whitespace-nowrap">{c.memberName}</td>
                 <td className="py-3 px-3 text-slate-600 font-semibold">{c.service}</td>
@@ -266,12 +729,58 @@ export const AttendanceSection: React.FC = () => (
                 </td>
               </motion.tr>
             ))}
+            {filteredCheckins.length === 0 && (
+              <tr>
+                <td colSpan={5} className="py-10 text-center text-slate-400 font-semibold">
+                  No check-ins match “{query}”.
+                </td>
+              </tr>
+            )}
           </motion.tbody>
         </table>
       </div>
+      ) : (
+        <div className="p-5 pt-2 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          {filteredCheckins.map((c, i) => (
+            <motion.div
+              key={c.id}
+              variants={rowVariants}
+              initial="hidden"
+              animate="show"
+              transition={{ delay: i * 0.04 }}
+              className="rounded-2xl border border-slate-100 bg-slate-50/50 p-4"
+            >
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-blue-50 text-[#3F76C5] flex items-center justify-center font-extrabold text-xs shrink-0">
+                  {c.memberName.split(' ').filter(Boolean).map((word) => word[0]).slice(0, 2).join('').toUpperCase()}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h4 className="text-xs font-extrabold text-slate-900 truncate">{c.memberName}</h4>
+                  <p className="text-[10px] font-mono font-semibold text-slate-400 truncate">{c.membershipNumber}</p>
+                </div>
+                <span className="shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-full text-[9px] font-extrabold border border-slate-200 text-slate-500 bg-white">
+                  <QrCode className="w-2.5 h-2.5" />
+                  {c.method === 'self_qr' ? 'Self scan' : 'Usher scan'}
+                </span>
+              </div>
+              <div className="mt-3 pt-3 border-t border-slate-100 space-y-1 text-[11px] font-semibold text-slate-500">
+                <p className="truncate">{c.service}</p>
+                <p className="flex items-center gap-1.5"><MapPin className="w-3 h-3 text-[#3F76C5]" />{c.branch}</p>
+                <p className="flex items-center gap-1.5"><Clock3 className="w-3 h-3 text-[#3F76C5]" />{c.date} • {c.time}</p>
+              </div>
+            </motion.div>
+          ))}
+          {filteredCheckins.length === 0 && (
+            <div className="sm:col-span-2 xl:col-span-3 py-10 text-center text-slate-400 text-xs font-semibold">
+              No check-ins match “{query}”.
+            </div>
+          )}
+        </div>
+      )}
     </div>
   </SectionShell>
-);
+  );
+};
 
 // ---------------------------------------------------------------------------
 // Payments

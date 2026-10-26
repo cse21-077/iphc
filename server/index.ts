@@ -3,7 +3,7 @@ import express, { NextFunction, Request, Response } from 'express';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { AppRole, MaritalStatus, MemberStatus, PrismaClient } from '@prisma/client';
+import { AppRole, AuditAction, MaritalStatus, MemberStatus, PrismaClient } from '@prisma/client';
 import { normalizePhone } from './security.js';
 
 const prisma = new PrismaClient();
@@ -373,6 +373,7 @@ const sendPasswordResetEmail = async (to: string, displayName: string, resetUrl:
     throw Object.assign(new Error('Set RESEND_API_KEY in the server environment.'), { status: 503 });
   }
   const safeName = displayName.trim() || 'Member';
+  console.log(`[resend] Sending password reset email to ${to}…`);
   const response = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
@@ -418,8 +419,11 @@ const sendPasswordResetEmail = async (to: string, displayName: string, resetUrl:
   });
   if (!response.ok) {
     const data = await response.json().catch(() => null);
-    throw Object.assign(new Error(data?.message ?? 'Could not send the reset email. Please try again.'), { status: 502 });
+    console.error(`[resend] Password reset email to ${to} failed — Resend responded ${response.status}:`, data ?? '(no response body)');
+    throw Object.assign(new Error(data?.message ?? `Could not send the reset email (Resend status ${response.status}). Please try again.`), { status: 502 });
   }
+  const sent = await response.json().catch(() => null);
+  console.log(`[resend] Password reset email to ${to} accepted by Resend (id: ${sent?.id ?? 'unknown'}).`);
 };
 
 app.post('/api/auth/forgot-password', async (request, response, next) => {
@@ -431,6 +435,11 @@ app.post('/api/auth/forgot-password', async (request, response, next) => {
     // Supabase Auth identities for these accounts are phone-based, so the
     // reset token is ours: emailed via Resend, stored hashed, single use.
     const appUser = await prisma.app_users.findUnique({ where: { email } });
+    if (!appUser) {
+      console.log(`[auth] Password reset requested for ${email}, but no account uses that email — no email sent.`);
+    } else if (!appUser.is_active) {
+      console.log(`[auth] Password reset requested for ${email}, but that account is disabled — no email sent.`);
+    }
     if (appUser?.is_active) {
       const token = randomBytes(32).toString('base64url');
       const now = new Date();
@@ -533,6 +542,154 @@ app.get('/api/auth/options', async (_request, response, next) => {
       branches: branchList.map((entry) => entry.name),
       sections: sectionList.map((entry) => entry.name),
     });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Admin: Silo event management
+// ---------------------------------------------------------------------------
+const adminEventDto = (event: {
+  id: string;
+  title: string;
+  category: string;
+  description: string;
+  location: string;
+  starts_at: Date;
+  ends_at: Date | null;
+  is_published: boolean;
+  archived_at: Date | null;
+  created_at: Date;
+  branches: { name: string } | null;
+}) => ({
+  id: event.id,
+  title: event.title,
+  category: event.category,
+  description: event.description,
+  location: event.location,
+  startsAt: event.starts_at.toISOString(),
+  endsAt: event.ends_at ? event.ends_at.toISOString() : null,
+  isPublished: event.is_published,
+  archivedAt: event.archived_at ? event.archived_at.toISOString() : null,
+  createdAt: event.created_at.toISOString(),
+  branch: event.branches?.name ?? null,
+});
+
+app.get('/api/admin/events', requireUser, requireAdmin, async (_request, response, next) => {
+  try {
+    const events = await prisma.events.findMany({
+      include: { branches: true },
+      orderBy: [{ archived_at: 'asc' }, { starts_at: 'desc' }],
+      take: 200,
+    });
+    return response.json(events.map(adminEventDto));
+  } catch (error) {
+    return next(error);
+  }
+});
+
+app.post('/api/admin/events', requireUser, requireAdmin, async (request, response, next) => {
+  try {
+    const body = request.body as {
+      title?: string;
+      category?: string;
+      description?: string;
+      location?: string;
+      startsAt?: string;
+      endsAt?: string;
+      isPublished?: boolean;
+    };
+    const title = String(body?.title ?? '').trim();
+    if (!title) return response.status(400).json({ error: 'Event title is required.' });
+    const startsAt = new Date(String(body?.startsAt ?? ''));
+    if (Number.isNaN(startsAt.getTime())) {
+      return response.status(400).json({ error: 'A valid start date and time is required.' });
+    }
+    const endsAt = body?.endsAt ? new Date(String(body.endsAt)) : null;
+    if (endsAt && Number.isNaN(endsAt.getTime())) {
+      return response.status(400).json({ error: 'End date and time is invalid.' });
+    }
+    const actorId = response.locals.profile.app_users.id;
+    const event = await prisma.events.create({
+      data: {
+        id: randomUUID(),
+        title,
+        category: String(body?.category ?? '').trim() || 'Service',
+        description: String(body?.description ?? '').trim(),
+        location: String(body?.location ?? '').trim() || 'Zuurbekom Headquarters (Silo)',
+        starts_at: startsAt,
+        ends_at: endsAt,
+        is_published: body?.isPublished !== false,
+        created_by: actorId,
+        updated_at: new Date(),
+      },
+      include: { branches: true },
+    });
+    await prisma.audit_log.create({
+      data: {
+        id: randomUUID(),
+        actor_id: actorId,
+        action: AuditAction.EVENT_CREATED,
+        entity_type: 'event',
+        entity_id: event.id,
+        details: { title: event.title, starts_at: event.starts_at.toISOString() },
+      },
+    });
+    return response.status(201).json(adminEventDto(event));
+  } catch (error) {
+    return next(error);
+  }
+});
+
+app.post('/api/admin/events/:id/publish', requireUser, requireAdmin, async (request, response, next) => {
+  try {
+    const id = String(request.params.id);
+    const isPublished = request.body?.isPublished !== false;
+    const existing = await prisma.events.findFirst({ where: { id, archived_at: null } });
+    if (!existing) return response.status(404).json({ error: 'Event not found.' });
+    const event = await prisma.events.update({
+      where: { id },
+      data: { is_published: isPublished },
+      include: { branches: true },
+    });
+    await prisma.audit_log.create({
+      data: {
+        id: randomUUID(),
+        actor_id: response.locals.profile.app_users.id,
+        action: AuditAction.EVENT_UPDATED,
+        entity_type: 'event',
+        entity_id: event.id,
+        details: { title: event.title, is_published: isPublished },
+      },
+    });
+    return response.json(adminEventDto(event));
+  } catch (error) {
+    return next(error);
+  }
+});
+
+app.post('/api/admin/events/:id/archive', requireUser, requireAdmin, async (request, response, next) => {
+  try {
+    const id = String(request.params.id);
+    const existing = await prisma.events.findFirst({ where: { id, archived_at: null } });
+    if (!existing) return response.status(404).json({ error: 'Event not found.' });
+    const event = await prisma.events.update({
+      where: { id },
+      data: { archived_at: new Date(), is_published: false },
+      include: { branches: true },
+    });
+    await prisma.audit_log.create({
+      data: {
+        id: randomUUID(),
+        actor_id: response.locals.profile.app_users.id,
+        action: AuditAction.EVENT_ARCHIVED,
+        entity_type: 'event',
+        entity_id: event.id,
+        details: { title: event.title },
+      },
+    });
+    return response.json(adminEventDto(event));
   } catch (error) {
     return next(error);
   }
@@ -687,5 +844,12 @@ app.use((error: any, request: Request, response: Response, next: NextFunction) =
 export default app;
 
 if (process.env.VERCEL !== '1') {
-  app.listen(PORT, () => console.log(`IPHC API listening on port ${PORT}`));
+  app.listen(PORT, () => {
+    console.log(`IPHC API listening on port ${PORT}`);
+    if (RESEND_API_KEY) {
+      console.log(`[resend] Password-reset emails enabled (key ${RESEND_API_KEY.slice(0, 3)}…${RESEND_API_KEY.slice(-4)}, from ${RESEND_FROM}).`);
+    } else {
+      console.warn('[resend] RESEND_API_KEY is not set — password-reset emails will fail with "Set RESEND_API_KEY in the server environment."');
+    }
+  });
 }
