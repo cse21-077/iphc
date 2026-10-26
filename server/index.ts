@@ -15,7 +15,7 @@ const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? '';
 const ACCESS_COOKIE = 'iphc_access';
 const REFRESH_COOKIE = 'iphc_refresh';
 const RESEND_API_KEY = process.env.RESEND_API_KEY ?? '';
-const RESEND_FROM = process.env.RESEND_FROM_EMAIL ?? 'IPHC MMUSO <noreply@iphc-silo.com>';
+const RESEND_FROM = 'MMUSO <noreply@iphc-silo.com>';
 
 app.disable('x-powered-by');
 app.use(express.json({ limit: '1mb' }));

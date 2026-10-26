@@ -20,6 +20,8 @@ import {
   Trash2,
   ChevronDown,
   KeyRound,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 
 interface RegistrationAuthModalProps {
@@ -113,6 +115,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
   // Direct login state
   const [loginPhoneInput, setLoginPhoneInput] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [loginError, setLoginError] = useState('');
   const [loginNotice, setLoginNotice] = useState('');
   const [formError, setFormError] = useState('');
@@ -962,18 +965,18 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
             <div>
               <h2 className="text-xl font-black text-[#0A2A52]">Log In to IPHC</h2>
               <p className="text-xs text-slate-500 mt-1">
-                Enter your registered email address or phone number.
+                Enter your registered email address and password.
               </p>
             </div>
 
             <form onSubmit={handleDirectLoginSubmit} className="space-y-4 pt-1">
               <div>
-                <label className={labelClass}>Email or Phone Number *</label>
+                <label className={labelClass}>Email Address *</label>
                 <input
-                  type="text"
+                  type="email"
                   required
                   autoComplete="username"
-                  placeholder="you@example.com or +27 82 000 0000"
+                  placeholder="you@example.com"
                   value={loginPhoneInput}
                   onChange={(e) => setLoginPhoneInput(e.target.value)}
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-[#3F76C5]"
@@ -982,14 +985,24 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
 
               <div>
                 <label className={labelClass}>Password *</label>
-                <input
-                  type="password"
-                  required
-                  autoComplete="current-password"
-                  value={loginPassword}
-                  onChange={(e) => setLoginPassword(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-[#3F76C5]"
-                />
+                <div className="relative">
+                  <input
+                    type={showLoginPassword ? 'text' : 'password'}
+                    required
+                    autoComplete="current-password"
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    className="w-full px-4 py-3 pr-12 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-[#3F76C5]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowLoginPassword((show) => !show)}
+                    aria-label={showLoginPassword ? 'Hide password' : 'Show password'}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-full text-slate-400 hover:text-slate-700 transition"
+                  >
+                    {showLoginPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
+                  </button>
+                </div>
                 <div className="flex justify-end mt-1.5">
                   <button
                     type="button"
