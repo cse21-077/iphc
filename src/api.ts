@@ -78,16 +78,34 @@ export interface AdminUser {
 }
 
 const request = async <T>(path: string, init: RequestInit = {}): Promise<T> => {
-  const response = await fetch(path, {
-    ...init,
-    credentials: 'same-origin',
-    headers: { 'Content-Type': 'application/json', ...init.headers },
-  });
-  if (!response.ok) {
-    const body = await response.json().catch(() => null);
-    throw new Error(body?.error ?? `Request failed (${response.status}).`);
+  const attempt = async (): Promise<T> => {
+    const response = await fetch(path, {
+      ...init,
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json', ...init.headers },
+    });
+    if (!response.ok) {
+      const body = await response.json().catch(() => null);
+      const error = new Error(body?.error ?? `Request failed (${response.status}).`) as Error & { status?: number };
+      error.status = response.status;
+      throw error;
+    }
+    return response.status === 204 ? (undefined as T) : response.json();
+  };
+  try {
+    return await attempt();
+  } catch (error) {
+    // Right after a fresh deploy Vercel can briefly return 404/503 while the
+    // new serverless functions propagate. Retry safe requests (reads and
+    // login) once instead of failing the whole session.
+    const status = (error as { status?: number }).status;
+    const isSafeToRetry = !init.method || init.method === 'GET' || path === '/api/auth/login';
+    if ((status === 404 || status === 503) && isSafeToRetry) {
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      return attempt();
+    }
+    throw error;
   }
-  return response.status === 204 ? (undefined as T) : response.json();
 };
 
 export const getCurrentUser = () => request<AuthResponse>('/api/auth/me');
