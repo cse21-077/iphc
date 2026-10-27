@@ -253,6 +253,23 @@ export default function App() {
     }
   };
 
+  // Password-reset links land as /<path>#reset_token=... . The auth modal
+  // shows the set-new-password screen only when it is open, so a logged-in
+  // member clicking the link would end up on the home screen with nowhere to
+  // type their new password — sign them out and let the modal take over.
+  useEffect(() => {
+    const applyRecoveryHash = () => {
+      const hash = window.location.hash.replace(/^#/, '');
+      if (!hash.includes('reset_token')) return;
+      if (new URLSearchParams(hash).get('reset_token') && hasSession) {
+        void handleSignOut();
+      }
+    };
+    applyRecoveryHash();
+    window.addEventListener('hashchange', applyRecoveryHash);
+    return () => window.removeEventListener('hashchange', applyRecoveryHash);
+  }, [hasSession]);
+
   // Handlers
   const handleRecordAttendance = (newRecord: AttendanceRecord) => {
     setAttendanceRecords((prev) => [newRecord, ...prev]);
