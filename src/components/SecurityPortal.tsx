@@ -23,10 +23,11 @@ import {
   SecurityEvent,
   SecurityProfile,
 } from '../api';
+import { t, useTranslation } from '../data/i18n';
 import { QRCodeDisplay } from './QRCodeDisplay';
 
 const errorMessage = (error: unknown) =>
-  error instanceof Error ? error.message : 'Something went wrong. Please try again.';
+  error instanceof Error ? error.message : t('common.errorGeneric');
 
 const formatEventTime = (value: string) =>
   new Intl.DateTimeFormat(undefined, {
@@ -69,6 +70,7 @@ const QrScanner: React.FC<{
 }> = ({ enabled, onDetected }) => {
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState('');
+  const { t } = useTranslation();
   const videoRef = useRef<HTMLVideoElement>(null);
   const scannerControlsRef = useRef<IScannerControls | null>(null);
 
@@ -82,7 +84,7 @@ const QrScanner: React.FC<{
   const startCamera = () => {
     setCameraError('');
     if (!navigator.mediaDevices?.getUserMedia) {
-      setCameraError('Camera access requires a supported browser on HTTPS or localhost. Enter the membership number below instead.');
+      setCameraError(t('security.cameraUnsupported'));
       return;
     }
     setCameraActive(true);
@@ -115,8 +117,8 @@ const QrScanner: React.FC<{
         setCameraActive(false);
         setCameraError(
           error instanceof Error && error.name === 'NotAllowedError'
-            ? 'Allow camera access in your browser settings, or enter the membership number below.'
-            : 'Could not start the camera. Enter the membership number below instead.'
+            ? t('security.cameraDenied')
+            : t('security.cameraFailed')
         );
       }
     };
@@ -140,14 +142,14 @@ const QrScanner: React.FC<{
           <video ref={videoRef} autoPlay muted playsInline className="h-full w-full object-cover" />
           <div className="pointer-events-none absolute inset-8 rounded-3xl border-2 border-white/80 shadow-[0_0_0_999px_rgba(15,23,42,0.25)]" />
           <p className="absolute bottom-3 inset-x-3 text-center text-xs font-semibold text-white drop-shadow">
-            Hold the member's QR code inside the frame
+            {t('security.cameraFrameHint')}
           </p>
           <button
             type="button"
             onClick={stopCamera}
             className="absolute right-3 top-3 rounded-full bg-black/50 px-3 py-1.5 text-xs font-bold text-white"
           >
-            Stop camera
+            {t('security.stopCamera')}
           </button>
         </div>
       ) : (
@@ -158,7 +160,7 @@ const QrScanner: React.FC<{
           className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#0A2A52] to-[#164A86] px-4 py-4 text-sm font-extrabold text-white transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Camera className="h-4 w-4" />
-          Open camera scanner
+          {t('security.openScanner')}
         </button>
       )}
       {cameraError && (
@@ -184,6 +186,7 @@ export const SecurityPortal: React.FC<{
   const [loadError, setLoadError] = useState('');
   const [pageError, setPageError] = useState('');
   const [isCheckingIn, setIsCheckingIn] = useState(false);
+  const { t } = useTranslation();
 
   const loadEvents = useCallback(async () => {
     const availableEvents = await getSecurityEvents();
@@ -305,9 +308,9 @@ export const SecurityPortal: React.FC<{
   const weekdayFormatter = new Intl.DateTimeFormat(undefined, { weekday: 'short' });
 
   const navItems: Array<{ id: SecurityTab; label: string; icon: React.ReactNode }> = [
-    { id: 'desk', label: 'Desk', icon: <Home className="h-5 w-5" /> },
-    { id: 'scan', label: 'Scan', icon: <Scan className="h-5 w-5" /> },
-    { id: 'profile', label: 'Profile', icon: <UserRound className="h-5 w-5" /> },
+    { id: 'desk', label: t('security.desk'), icon: <Home className="h-5 w-5" /> },
+    { id: 'scan', label: t('security.scan'), icon: <Scan className="h-5 w-5" /> },
+    { id: 'profile', label: t('security.profile'), icon: <UserRound className="h-5 w-5" /> },
   ];
 
   return (
@@ -323,15 +326,15 @@ export const SecurityPortal: React.FC<{
               <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-[#F5B301] ring-2 ring-[#F3F6FA]" />
             </div>
             <div className="min-w-0">
-              <h1 className="truncate text-lg font-black tracking-tight text-[#0A2A52]">Hello, {firstName}</h1>
-              <p className="text-xs font-semibold text-slate-500">Today, {todayLabel}</p>
+              <h1 className="truncate text-lg font-black tracking-tight text-[#0A2A52]">{t('security.hello', { name: firstName })}</h1>
+              <p className="text-xs font-semibold text-slate-500">{t('security.today', { date: todayLabel })}</p>
             </div>
           </div>
           <button
             type="button"
             onClick={handleSignOut}
-            aria-label="Sign out"
-            title="Sign out"
+            aria-label={t('security.signOutAria')}
+            title={t('security.signOut')}
             className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-white text-[#0A2A52] shadow-sm transition hover:text-[#D13138] active:scale-95"
           >
             <LogOut className="h-5 w-5" />
@@ -358,16 +361,16 @@ export const SecurityPortal: React.FC<{
                   <ShieldCheck className="h-3 w-3 text-[#D13138]" />
                   IPHC • Gate team
                 </span>
-                <h2 className="mt-3 text-2xl font-black tracking-tight text-[#0A2A52]">Gate duty</h2>
+                <h2 className="mt-3 text-2xl font-black tracking-tight text-[#0A2A52]">{t('security.gateDuty')}</h2>
                 <p className="mt-1 text-xs font-semibold leading-relaxed text-[#3D5876]">
-                  Select an event below, then scan member QR codes at the door.
+                  {t('security.gateDutySub')}
                 </p>
                 <div className="mt-4 flex flex-wrap items-center gap-2">
                   <span className="rounded-full bg-white px-3 py-1.5 text-[10px] font-extrabold text-[#0A2A52] shadow-sm">
-                    {events.length} upcoming event{events.length === 1 ? '' : 's'}
+                    {t(events.length === 1 ? 'security.upcomingEvents' : 'security.upcomingEventsPlural', { count: events.length })}
                   </span>
                   <span className="rounded-full bg-white px-3 py-1.5 text-[10px] font-extrabold text-[#0A2A52] shadow-sm">
-                    {todayCount} today
+                    {t('security.todayCount', { count: todayCount })}
                   </span>
                 </div>
               </div>
@@ -402,7 +405,7 @@ export const SecurityPortal: React.FC<{
 
             {/* Your events grid */}
             <section>
-              <h3 className="text-lg font-black tracking-tight text-[#0A2A52]">Your events</h3>
+              <h3 className="text-lg font-black tracking-tight text-[#0A2A52]">{t('security.yourEvents')}</h3>
               {dayEvents.length ? (
                 <div className="mt-3 grid grid-cols-2 gap-3">
                   {dayEvents.map((event, index) => {
@@ -443,22 +446,22 @@ export const SecurityPortal: React.FC<{
               ) : events.length ? (
                 <div className="mt-3 rounded-[24px] border border-dashed border-slate-300 bg-white/70 px-5 py-8 text-center">
                   <CalendarDays className="mx-auto h-7 w-7 text-slate-300" />
-                  <p className="mt-2 text-sm font-extrabold text-slate-700">No events on this day</p>
-                  <p className="mt-1 text-xs font-medium text-slate-500">Pick a day marked with a red dot.</p>
+                  <p className="mt-2 text-sm font-extrabold text-slate-700">{t('security.noEventsThisDay')}</p>
+                  <p className="mt-1 text-xs font-medium text-slate-500">{t('security.noEventsThisDaySub')}</p>
                 </div>
               ) : (
                 <div className="mt-3 rounded-[24px] border border-dashed border-slate-300 bg-white/70 px-5 py-10 text-center">
                   <Users className="mx-auto h-8 w-8 text-slate-300" />
-                  <h4 className="mt-3 text-sm font-extrabold text-slate-800">No upcoming events</h4>
+                  <h4 className="mt-3 text-sm font-extrabold text-slate-800">{t('security.noUpcomingEvents')}</h4>
                   <p className="mx-auto mt-1 max-w-xs text-xs leading-relaxed text-slate-500">
-                    Published events assigned to your gate will appear here when they are available.
+                    {t('security.noUpcomingSub')}
                   </p>
                   <button
                     type="button"
                     onClick={refreshEvents}
                     className="mt-4 text-xs font-extrabold text-[#3F76C5] hover:underline"
                   >
-                    Refresh events
+                    {t('security.refreshEvents')}
                   </button>
                 </div>
               )}
@@ -468,7 +471,7 @@ export const SecurityPortal: React.FC<{
             {selectedEvent && (
               <section className="rounded-[28px] bg-white p-5 shadow-[0_10px_30px_rgba(10,42,82,0.08)]">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-400">Selected event</p>
+                  <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-400">{t('security.selectedEvent')}</p>
                   <span className="rounded-full bg-[#EAF1FB] px-2.5 py-1 text-[9px] font-extrabold uppercase tracking-wider text-[#3F76C5]">
                     {selectedEvent.category}
                   </span>
@@ -480,8 +483,8 @@ export const SecurityPortal: React.FC<{
                   {selectedEvent.branch && <p className="flex items-center gap-2"><Users className="h-4 w-4 shrink-0 text-[#3F76C5]" />{selectedEvent.branch}</p>}
                 </div>
                 <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50/60 p-4 text-center">
-                  <p className="text-xs font-extrabold text-slate-800">Official member self check-in QR</p>
-                  <p className="mt-1 text-[11px] font-medium text-slate-500">Members scan this event code with their IPHC app.</p>
+                  <p className="text-xs font-extrabold text-slate-800">{t('security.officialQr')}</p>
+                  <p className="mt-1 text-[11px] font-medium text-slate-500">{t('security.officialQrSub')}</p>
                   <div className="mt-3 inline-flex rounded-2xl border border-slate-200 bg-white p-3">
                     <QRCodeDisplay value={`${EVENT_QR_PREFIX}${selectedEvent.id}`} size={160} />
                   </div>
@@ -492,7 +495,7 @@ export const SecurityPortal: React.FC<{
                   className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#0A2A52] to-[#164A86] px-4 py-3.5 text-sm font-extrabold text-white transition active:scale-[0.98]"
                 >
                   <Scan className="h-4 w-4" />
-                  Open camera scanner
+                  {t('security.openScanner')}
                 </button>
               </section>
             )}
@@ -501,10 +504,10 @@ export const SecurityPortal: React.FC<{
             <section className="rounded-[24px] bg-[#FEF6E0] p-4">
               <div className="flex items-center gap-2 text-amber-900">
                 <ShieldCheck className="h-4 w-4 text-[#B98600]" />
-                <h3 className="text-xs font-extrabold">Check-in guidance</h3>
+                <h3 className="text-xs font-extrabold">{t('security.guidance')}</h3>
               </div>
               <p className="mt-2 text-xs leading-relaxed text-amber-900/75">
-                Scan the QR displayed on an approved member's digital card. Each member can be checked in once per event.
+                {t('security.guidanceSub')}
               </p>
             </section>
           </div>
@@ -518,7 +521,7 @@ export const SecurityPortal: React.FC<{
                   <div className="pointer-events-none absolute -right-8 -top-8 h-36 w-36 rounded-full bg-white/10 blur-2xl" />
                   <div className="pointer-events-none absolute -bottom-10 -left-6 h-28 w-28 rounded-full bg-[#F5B301]/20 blur-xl" />
                   <div className="relative z-10">
-                    <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-blue-200">Scanning for</p>
+                    <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-blue-200">{t('security.scanningFor')}</p>
                     <h2 className="mt-1.5 text-lg font-black leading-snug">{selectedEvent.title}</h2>
                     <div className="mt-2.5 space-y-1.5 text-xs font-semibold text-blue-100">
                       <p className="flex items-center gap-2"><Clock3 className="h-3.5 w-3.5 shrink-0" />{formatEventTime(selectedEvent.startsAt)}</p>
@@ -528,8 +531,8 @@ export const SecurityPortal: React.FC<{
                 </section>
 
                 <section className="rounded-[28px] bg-white p-5 shadow-[0_10px_30px_rgba(10,42,82,0.08)]">
-                  <h3 className="text-base font-black text-slate-950">Member check-in</h3>
-                  <p className="mt-1 text-xs font-medium text-slate-500">Scan the QR on the member's digital card, or enter their membership number.</p>
+                  <h3 className="text-base font-black text-slate-950">{t('security.memberCheckIn')}</h3>
+                  <p className="mt-1 text-xs font-medium text-slate-500">{t('security.memberCheckInSub')}</p>
 
                   {pageError && (
                     <p role="alert" className="mt-4 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-xs font-semibold text-red-700">
@@ -541,7 +544,7 @@ export const SecurityPortal: React.FC<{
                     <div role="status" className="mt-4 flex items-start gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
                       <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600" />
                       <div>
-                        <p className="text-sm font-extrabold text-emerald-900">Member checked in</p>
+                        <p className="text-sm font-extrabold text-emerald-900">{t('security.checkedIn')}</p>
                         <p className="mt-1 text-xs font-semibold text-emerald-800">{lastCheckIn.memberName}</p>
                         <p className="mt-0.5 text-[11px] text-emerald-700">{lastCheckIn.membershipNumber} · {lastCheckIn.eventName}</p>
                       </div>
@@ -553,7 +556,7 @@ export const SecurityPortal: React.FC<{
                   </div>
 
                   <div className="my-5 flex items-center gap-3 text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                    <span className="h-px flex-1 bg-slate-200" /> Or enter member number <span className="h-px flex-1 bg-slate-200" />
+                    <span className="h-px flex-1 bg-slate-200" /> {t('security.orEnterNumber')} <span className="h-px flex-1 bg-slate-200" />
                   </div>
 
                   <form
@@ -568,8 +571,8 @@ export const SecurityPortal: React.FC<{
                       onChange={(event) => setMembershipNumber(event.target.value)}
                       required
                       maxLength={32}
-                      placeholder="e.g. ZB-000123"
-                      aria-label="Member number"
+                      placeholder={t('security.memberNumberPh')}
+                      aria-label={t('security.memberNumber')}
                       className="min-w-0 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-3 text-sm font-semibold text-slate-900 outline-none focus:border-[#3F76C5] focus:ring-2 focus:ring-[#3F76C5]/15"
                     />
                     <button
@@ -578,7 +581,7 @@ export const SecurityPortal: React.FC<{
                       className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-[#0A2A52] to-[#164A86] px-4 py-3 text-xs font-extrabold text-white transition active:scale-95 disabled:opacity-50"
                     >
                       {isCheckingIn ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
-                      Check in
+                      {t('security.checkIn')}
                     </button>
                   </form>
                 </section>
@@ -586,16 +589,16 @@ export const SecurityPortal: React.FC<{
             ) : (
               <div className="rounded-[24px] border border-dashed border-slate-300 bg-white/70 px-5 py-12 text-center">
                 <Camera className="mx-auto h-8 w-8 text-slate-300" />
-                <h4 className="mt-3 text-sm font-extrabold text-slate-800">No event to scan for</h4>
+                <h4 className="mt-3 text-sm font-extrabold text-slate-800">{t('security.noEventToScan')}</h4>
                 <p className="mx-auto mt-1 max-w-xs text-xs leading-relaxed text-slate-500">
-                  Published events assigned to your gate will appear here when they are available.
+                  {t('security.noEventToScanSub')}
                 </p>
                 <button
                   type="button"
                   onClick={refreshEvents}
                   className="mt-4 text-xs font-extrabold text-[#3F76C5] hover:underline"
                 >
-                  Refresh events
+                  {t('security.refreshEvents')}
                 </button>
               </div>
             )}
@@ -611,17 +614,17 @@ export const SecurityPortal: React.FC<{
                 </div>
                 <h3 className="mt-4 text-lg font-black text-slate-950">{profile.name}</h3>
                 <span className="mt-2 rounded-full bg-[#EAF1FB] px-3 py-1 text-[10px] font-extrabold uppercase tracking-wider text-[#3F76C5]">
-                  Gate security staff
+                  {t('security.profileRole')}
                 </span>
               </div>
               <dl className="mt-6 space-y-4 border-t border-slate-100 pt-5">
                 <div>
-                  <dt className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Work email</dt>
+                  <dt className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">{t('security.workEmail')}</dt>
                   <dd className="mt-1 text-sm font-semibold text-slate-800">{profile.email}</dd>
                 </div>
                 <div>
-                  <dt className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">Assigned branch</dt>
-                  <dd className="mt-1 text-sm font-semibold text-slate-800">{profile.branch ?? 'All branches'}</dd>
+                  <dt className="text-[10px] font-extrabold uppercase tracking-widest text-slate-400">{t('security.assignedBranch')}</dt>
+                  <dd className="mt-1 text-sm font-semibold text-slate-800">{profile.branch ?? t('security.allBranches')}</dd>
                 </div>
               </dl>
               <button
@@ -630,7 +633,7 @@ export const SecurityPortal: React.FC<{
                 className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-[#FBE7E8] px-4 py-3.5 text-sm font-extrabold text-[#D13138] transition hover:bg-[#F8DBDD] active:scale-[0.98]"
               >
                 <LogOut className="h-4 w-4" />
-                Sign out
+                {t('security.signOut')}
               </button>
             </section>
           </div>

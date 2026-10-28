@@ -13,6 +13,7 @@ import confetti from 'canvas-confetti';
 import { MemberProfile, AttendanceRecord } from '../types';
 import { QRCodeDisplay } from './QRCodeDisplay';
 import { EVENT_QR_PREFIX, MemberAttendance, recordMemberCheckIn } from '../api';
+import { useTranslation } from '../data/i18n';
 
 interface ScanViewProps {
   member: MemberProfile;
@@ -27,6 +28,7 @@ export const ScanView: React.FC<ScanViewProps> = ({
   onBackToHome,
   onViewHistory,
 }) => {
+  const { t } = useTranslation();
   const [scanMode, setScanMode] = useState<'self_camera' | 'usher_show'>('self_camera');
   const [cameraActive, setCameraActive] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
@@ -51,7 +53,7 @@ export const ScanView: React.FC<ScanViewProps> = ({
   const handleScannedCode = useCallback(async (value: string) => {
     setScanError('');
     if (!value.startsWith(EVENT_QR_PREFIX)) {
-      setScanError('That is not an IPHC event QR code. Scan the event QR displayed by the gate team.');
+      setScanError(t('scan.invalidCode'));
       return;
     }
 
@@ -69,7 +71,7 @@ export const ScanView: React.FC<ScanViewProps> = ({
         colors: ['#3F76C5', '#D13138', '#10B981', '#F59E0B'],
       });
     } catch (error) {
-      setScanError(error instanceof Error ? error.message : 'Check-in could not be verified. Please try again.');
+      setScanError(error instanceof Error ? error.message : t('common.errorGeneric'));
     } finally {
       setIsScanning(false);
     }
@@ -98,8 +100,8 @@ export const ScanView: React.FC<ScanViewProps> = ({
         if (!active) return;
         setCameraActive(false);
         setScanError(error instanceof Error && error.name === 'NotAllowedError'
-          ? 'Camera access is blocked. Allow camera access in browser settings and try again.'
-          : 'Could not start the camera scanner. Check camera permissions and try again.');
+          ? t('scan.cameraBlocked')
+          : t('scan.cameraStartFailed'));
       }
     };
 
@@ -123,16 +125,16 @@ export const ScanView: React.FC<ScanViewProps> = ({
           className="flex items-center gap-1 text-[#6B7280] hover:text-[#1A1A1A] text-sm font-semibold p-1"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Home</span>
+          <span>{t('tabs.home')}</span>
         </button>
 
-        <h2 className="text-base font-bold text-[#1A1A1A]">Church Check-In</h2>
+        <h2 className="text-base font-bold text-[#1A1A1A]">{t('scan.title')}</h2>
 
         <button
           onClick={onViewHistory}
           className="text-xs font-bold text-[#3F76C5] hover:underline"
         >
-          My History
+          {t('scan.history')}
         </button>
       </div>
 
@@ -149,7 +151,7 @@ export const ScanView: React.FC<ScanViewProps> = ({
             }`}
           >
             <Camera className="w-3.5 h-3.5" />
-            <span>Scan Seat / Venue QR</span>
+            <span>{t('scan.scanEvent')}</span>
           </button>
 
           <button
@@ -162,7 +164,7 @@ export const ScanView: React.FC<ScanViewProps> = ({
             }`}
           >
             <UserCheck className="w-3.5 h-3.5" />
-            <span>Show QR to Usher</span>
+            <span>{t('scan.showQrUsher')}</span>
           </button>
         </div>
       </div>
@@ -172,10 +174,10 @@ export const ScanView: React.FC<ScanViewProps> = ({
         <div className="flex-1 flex flex-col items-center justify-between p-4">
           <div className="w-full text-center my-2">
             <h3 className="text-lg font-bold text-slate-900 tracking-tight">
-              Self-Service Check-In
+              {t('scan.selfServiceTitle')}
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Point your camera at the QR code posted at your entrance gate or seat.
+              {t('scan.instruction')}
             </p>
           </div>
 
@@ -192,8 +194,8 @@ export const ScanView: React.FC<ScanViewProps> = ({
             ) : (
               <div className="relative w-full h-full flex flex-col items-center justify-center bg-slate-900 text-slate-400 p-6 text-center">
                 <Camera className="w-10 h-10 text-slate-400 mb-3" />
-                <p className="text-xs font-medium text-slate-300">Camera scanner is stopped</p>
-                <p className="text-[11px] text-slate-500 mt-1">Start the scanner and point it at an official event QR code.</p>
+                <p className="text-xs font-medium text-slate-300">{t('scan.cameraStopped')}</p>
+                <p className="text-[11px] text-slate-500 mt-1">{t('scan.cameraHint')}</p>
               </div>
             )}
 
@@ -217,7 +219,7 @@ export const ScanView: React.FC<ScanViewProps> = ({
             {isScanning && (
               <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-xs flex flex-col items-center justify-center text-white">
                 <div className="w-12 h-12 rounded-full border-4 border-white/20 border-t-[#D13138] animate-spin mb-3" />
-                <p className="text-xs font-semibold tracking-wide uppercase text-blue-200">Validating attendance...</p>
+                <p className="text-xs font-semibold tracking-wide uppercase text-blue-200">{t('scan.validating')}</p>
               </div>
             )}
           </div>
@@ -230,7 +232,7 @@ export const ScanView: React.FC<ScanViewProps> = ({
             )}
             {member.isPending ? (
               <p role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs font-semibold text-amber-900">
-                Your membership is awaiting approval. Check-in is available after approval.
+                {t('scan.pendingApproval')}
               </p>
             ) : (
               <button
@@ -243,7 +245,7 @@ export const ScanView: React.FC<ScanViewProps> = ({
                 className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#3F76C5] px-4 py-3 text-sm font-bold text-white shadow-md transition hover:bg-[#3465a8] disabled:opacity-50"
               >
                 <Camera className="h-4 w-4" />
-                {cameraActive ? 'Stop camera scanner' : 'Start camera scanner'}
+                {cameraActive ? t('scan.stopCamera') : t('scan.startCamera')}
               </button>
             )}
           </div>
@@ -256,11 +258,11 @@ export const ScanView: React.FC<ScanViewProps> = ({
           <div className="w-full max-w-xs bg-white rounded-3xl p-6 shadow-xl border border-slate-200/80">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#D13138]/10 text-[#D13138] text-xs font-bold mb-3">
               <QrCode className="w-3.5 h-3.5" />
-              <span>Usher Attendance Scan</span>
+              <span>{t('scan.usherScanBadge')}</span>
             </div>
 
             <p className="text-xs text-slate-500 mb-4">
-              Hold this QR code steady in front of the usher scanner console at the entrance.
+              {t('scan.usherHoldSteady')}
             </p>
 
             <div className="p-4 bg-slate-50 rounded-2xl border-2 border-slate-200 mx-auto w-fit shadow-inner">
@@ -280,7 +282,7 @@ export const ScanView: React.FC<ScanViewProps> = ({
             </div>
 
             <p className="mt-5 rounded-xl bg-slate-50 p-3 text-xs leading-relaxed text-slate-600">
-              Ask the gate team to scan this membership QR. Attendance is confirmed only after the server accepts the check-in.
+              {t('scan.usherNote')}
             </p>
           </div>
         </div>
@@ -294,7 +296,7 @@ export const ScanView: React.FC<ScanViewProps> = ({
             <CheckCircle2 className="w-16 h-16 text-emerald-600 mx-auto mb-3 stroke-[2.2]" />
 
             <h3 className="text-2xl font-black text-slate-900 tracking-tight leading-tight">
-              Checked in ✓
+              {t('scan.success')}
             </h3>
             <p className="text-sm font-semibold text-emerald-700 mt-1">
               {successRecord.serviceName}
@@ -305,7 +307,7 @@ export const ScanView: React.FC<ScanViewProps> = ({
               <div className="flex items-center justify-between">
                 <span className="text-slate-500 flex items-center gap-1">
                   <Clock className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Time Recorded</span>
+                  <span>{t('scan.timeRecorded')}</span>
                 </span>
                 <span className="font-bold text-slate-900">{successRecord.time}</span>
               </div>
@@ -313,7 +315,7 @@ export const ScanView: React.FC<ScanViewProps> = ({
               <div className="flex items-center justify-between">
                 <span className="text-slate-500 flex items-center gap-1">
                   <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                  <span>Location</span>
+                  <span>{t('calendar.location')}</span>
                 </span>
                 <span className="font-bold text-slate-900 truncate max-w-[170px] text-right">
                   {successRecord.branch}
@@ -322,13 +324,13 @@ export const ScanView: React.FC<ScanViewProps> = ({
 
               {successRecord.seatNumber && (
                 <div className="flex items-center justify-between">
-                  <span className="text-slate-500">Seat / Gate</span>
+                  <span className="text-slate-500">{t('scan.seatGate')}</span>
                   <span className="font-semibold text-[#3F76C5]">{successRecord.seatNumber}</span>
                 </div>
               )}
 
               <div className="pt-2 border-t border-slate-200 flex items-center justify-between font-mono text-[11px]">
-                <span className="text-slate-400">Ref Code</span>
+                <span className="text-slate-400">{t('attendance.verificationCode')}</span>
                 <span className="font-bold text-slate-600">{successRecord.verificationCode}</span>
               </div>
             </div>
@@ -340,14 +342,14 @@ export const ScanView: React.FC<ScanViewProps> = ({
                 onClick={onBackToHome}
                 className="w-full py-3 rounded-2xl bg-[#3F76C5] text-white font-bold text-sm hover:bg-[#3262a4] transition active:scale-98 shadow-md shadow-blue-500/20"
               >
-                Done — Return to Home
+                {t('scan.doneReturnHome')}
               </button>
 
               <button
                 onClick={onViewHistory}
                 className="w-full py-2.5 rounded-xl bg-slate-100 text-slate-700 font-semibold text-xs hover:bg-slate-200 transition"
               >
-                View Attendance Record
+                {t('scan.history')}
               </button>
             </div>
           </div>

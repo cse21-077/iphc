@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { RegistrationPayload } from '../api';
 import { BRANCH_REGION_GROUPS } from '../data/branches';
+import { useTranslation } from '../data/i18n';
 import {
   ArrowRight,
   Check,
@@ -78,6 +79,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
   onRequestPasswordReset,
   onResetPassword,
 }) => {
+  const { t } = useTranslation();
   const [mode, setMode] = useState<'welcome' | 'phone' | 'about' | 'review' | 'confirmation' | 'direct_login' | 'forgot_password' | 'reset_password'>('welcome');
 
   // Form State
@@ -152,6 +154,23 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
   })).filter((group) => group.branches.length > 0);
   const totalFilteredBranches = filteredBranchGroups.reduce((sum, g) => sum + g.branches.length, 0);
 
+  // Translated display labels for option values that are also submitted as data.
+  const maritalLabels: Record<string, string> = {
+    Single: t('common.marital.single'),
+    Married: t('common.marital.married'),
+    Divorced: t('common.marital.divorced'),
+    Widowed: t('common.marital.widowed'),
+  };
+
+  const kinRelationLabels: Record<string, string> = {
+    Spouse: t('common.relationship.spouse'),
+    Parent: t('common.relationship.parent'),
+    Child: t('common.relationship.child'),
+    Sibling: t('common.relationship.sibling'),
+    Grandparent: t('common.relationship.grandparent'),
+    'Other Relative': t('common.relationship.otherRelative'),
+  };
+
   // A reset email link lands on the app as /<path>#reset_token=<token>.
   // Pick that token up and switch straight into the set-new-password screen.
   useEffect(() => {
@@ -225,7 +244,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
       });
       setMode('confirmation');
     } catch (error) {
-      setFormError(error instanceof Error ? error.message : 'Registration could not be completed.');
+      setFormError(error instanceof Error ? error.message : t('auth.register.errorGeneric'));
     } finally {
       setIsSubmitting(false);
     }
@@ -240,7 +259,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
       await onLogin(loginPhoneInput.trim(), loginPassword);
       onClose();
     } catch (error) {
-      setLoginError(error instanceof Error ? error.message : 'Unable to sign in.');
+      setLoginError(error instanceof Error ? error.message : t('auth.signIn.errorGeneric'));
     } finally {
       setIsSubmitting(false);
     }
@@ -261,7 +280,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
       await onRequestPasswordReset(resetEmail.trim().toLowerCase());
       setResetSentTo(resetEmail.trim());
     } catch (error) {
-      setResetError(error instanceof Error ? error.message : 'Could not send the reset email. Please try again.');
+      setResetError(error instanceof Error ? error.message : t('auth.reset.errSend'));
     } finally {
       setIsSubmitting(false);
     }
@@ -270,11 +289,11 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
   const handleResetPasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPassword.length < 8) {
-      setResetError('Password must be at least 8 characters.');
+      setResetError(t('auth.reset.errTooShort'));
       return;
     }
     if (newPassword !== confirmPassword) {
-      setResetError('Passwords do not match.');
+      setResetError(t('auth.reset.errMismatch'));
       return;
     }
     setResetError('');
@@ -286,13 +305,13 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
       setConfirmPassword('');
       setResetToken('');
       setLoginPassword('');
-      setLoginNotice('Your password has been updated. Log in with your new password.');
+      setLoginNotice(t('auth.reset.successUpdated'));
       setMode('direct_login');
     } catch (error) {
       setResetError(
         error instanceof Error
           ? error.message
-          : 'Could not update the password. The reset link may have expired — request a new one.'
+          : t('auth.reset.errUpdate')
       );
     } finally {
       setIsSubmitting(false);
@@ -308,7 +327,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
           setCountrySearch('');
         }}
         className="h-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 flex items-center gap-1.5 hover:bg-slate-100 transition focus:outline-hidden focus:ring-2 focus:ring-[#3F76C5]"
-        aria-label="Select country code"
+        aria-label={t('auth.register.countryCodeAria')}
       >
         <span className="text-base leading-none">{selectedCountry.flag}</span>
         <span className="font-mono">{dialCode}</span>
@@ -326,7 +345,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
                 autoFocus
                 value={countrySearch}
                 onChange={(e) => setCountrySearch(e.target.value)}
-                placeholder="Search country or code"
+                placeholder={t('auth.register.countrySearchPh')}
                 className="w-full pl-7 pr-2 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-900 focus:outline-hidden focus:ring-1 focus:ring-[#3F76C5]"
               />
             </div>
@@ -350,7 +369,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
               </button>
             ))}
             {filteredCountries.length === 0 && (
-              <div className="p-3 text-xs text-slate-400 text-center">No countries match "{countrySearch}"</div>
+              <div className="p-3 text-xs text-slate-400 text-center">{t('auth.register.noCountries', { query: countrySearch })}</div>
             )}
           </div>
         </div>
@@ -365,7 +384,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
         <button
           onClick={onClose}
           className="absolute top-5 right-5 p-2 rounded-full text-slate-400 hover:text-slate-700 transition z-10"
-          aria-label="Close"
+          aria-label={t('common.close')}
         >
           <X className="w-5 h-5" />
         </button>
@@ -374,7 +393,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
         {mode === 'welcome' && (
           <div className="py-4 space-y-6 text-center animate-in fade-in duration-150">
             <div className="w-20 h-20 mx-auto flex items-center justify-center">
-              <img src="/App%20logo.png" alt="IPHC logo" className="w-full h-full object-contain" />
+              <img src="/App%20logo.png" alt={t('auth.welcome.logoAlt')} className="w-full h-full object-contain" />
             </div>
 
             <div>
@@ -382,7 +401,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
                 International Pentecost Holiness Church
               </h2>
               <p className="text-xs text-slate-500 font-medium mt-2 leading-relaxed px-2">
-                Get your digital membership card, check in at services, and stay connected with your branch.
+                {t('auth.welcome.blurb')}
               </p>
             </div>
 
@@ -391,7 +410,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
                 onClick={() => setMode('phone')}
                 className="w-full py-4 rounded-full bg-[#0A2A52] text-white font-extrabold text-sm hover:bg-[#164A86] transition shadow-lg active:scale-98 flex items-center justify-center gap-2"
               >
-                <span>Register New Account</span>
+                <span>{t('auth.welcome.register')}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
 
@@ -399,7 +418,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
                 onClick={() => setMode('direct_login')}
                 className="text-xs font-bold text-slate-600 hover:text-black py-2 block mx-auto transition"
               >
-                Already a member? <span className="underline text-slate-900">Log in</span>
+                {t('auth.welcome.alreadyMember')} <span className="underline text-slate-900">{t('auth.welcome.loginLink')}</span>
               </button>
             </div>
           </div>
@@ -409,19 +428,19 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
         {mode === 'phone' && (
           <div className="py-4 space-y-5 animate-in fade-in duration-150">
             <div className="flex items-center gap-2 text-xs font-bold text-slate-400 uppercase tracking-widest">
-              <span>Step 1 of 3</span>
+              <span>{t('auth.stepOf', { step: 1, total: 3 })}</span>
             </div>
 
             <div>
-              <h2 className="text-xl font-black text-[#0A2A52]">Enter Phone Number</h2>
+              <h2 className="text-xl font-black text-[#0A2A52]">{t('auth.register.phoneTitle')}</h2>
               <p className="text-xs text-slate-500 mt-1">
-                Create a secure account with your phone number and a password.
+                {t('auth.register.phoneSub')}
               </p>
             </div>
 
             <form onSubmit={handleSendCode} className="space-y-4 pt-2">
               <div>
-                  <label className={labelClass}>Mobile Number *</label>
+                  <label className={labelClass}>{t('auth.register.mobileNumber')} *</label>
                 <div className="flex gap-2">
                   <CountryPicker idPrefix="reg" />
                   <input
@@ -436,7 +455,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
               </div>
 
               <div>
-                <label className={labelClass}>Password (at least 8 characters) *</label>
+                <label className={labelClass}>{t('auth.register.passwordRule')} *</label>
                 <input
                   type="password"
                   required
@@ -452,7 +471,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
                 type="submit"
                 className="w-full py-3.5 rounded-full bg-[#0A2A52] text-white font-extrabold text-sm hover:bg-[#164A86] transition shadow-md active:scale-98"
               >
-                Continue
+                {t('common.continue')}
               </button>
             </form>
           </div>
@@ -462,25 +481,25 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
         {mode === 'about' && (
           <div className="py-2 space-y-4 animate-in fade-in duration-150 flex-1 overflow-y-auto pr-1">
             <div className="flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-widest">
-              <span>Step 2 of 3</span>
-              <span>Member Information</span>
+              <span>{t('auth.stepOf', { step: 2, total: 3 })}</span>
+              <span>{t('auth.register.infoTitle')}</span>
             </div>
 
             <div>
-              <h2 className="text-xl font-black text-[#0A2A52]">Member Information</h2>
+              <h2 className="text-xl font-black text-[#0A2A52]">{t('auth.register.infoTitle')}</h2>
               <p className="text-xs text-slate-500 mt-0.5">
-                Provide your details as they should appear on your membership record.
+                {t('auth.register.infoSub')}
               </p>
             </div>
 
             <div className="space-y-3.5 text-xs">
               {/* Personal Details */}
               <h3 className={subHeadingClass}>
-                <User className="w-3.5 h-3.5" /> Personal Details
+                <User className="w-3.5 h-3.5" /> {t('auth.register.personalDetails')}
               </h3>
 
               <div>
-                <label className={labelClass}>Honorific Title *</label>
+                <label className={labelClass}>{t('auth.register.titleLabel')} *</label>
                 <div className="grid grid-cols-2 gap-2">
                   {(['Ntate', 'Mme'] as const).map((pref) => (
                     <button
@@ -500,32 +519,32 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
               </div>
 
               <div>
-                <label className={labelClass}>Full Name *</label>
+                <label className={labelClass}>{t('auth.register.fullName')} *</label>
                 <input
                   type="text"
                   required
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  placeholder="e.g. Masego Tau"
+                  placeholder={t('auth.register.fullNamePh')}
                   className={inputClass}
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-2.5">
                 <div>
-                  <label className={labelClass}>Age</label>
+                  <label className={labelClass}>{t('auth.register.age')}</label>
                   <input
                     type="number"
                     min={1}
                     max={120}
                     value={age}
                     onChange={(e) => setAge(e.target.value)}
-                    placeholder="e.g. 34"
+                    placeholder={t('auth.register.agePh')}
                     className={inputClass}
                   />
                 </div>
                 <div>
-                  <label className={labelClass}>Marriage Status</label>
+                  <label className={labelClass}>{t('auth.register.marital')}</label>
                   <select
                     value={marriageStatus}
                     onChange={(e) => setMarriageStatus(e.target.value)}
@@ -533,7 +552,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
                   >
                     {MARRIAGE_OPTIONS.map((s) => (
                       <option key={s} value={s}>
-                        {s}
+                        {maritalLabels[s] ?? s}
                       </option>
                     ))}
                   </select>
@@ -542,11 +561,11 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
 
               {/* Profile Picture */}
               <div>
-                <label className={labelClass}>Profile Picture (Optional Upload)</label>
+                <label className={labelClass}>{t('auth.register.photoLabel')}</label>
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-full bg-slate-100 border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center">
                     {photoUrl ? (
-                      <img src={photoUrl} alt="Preview" className="w-full h-full object-cover" />
+                      <img src={photoUrl} alt={t('auth.register.photoAlt')} className="w-full h-full object-cover" />
                     ) : (
                       <Camera className="w-5 h-5 text-slate-400" />
                     )}
@@ -560,7 +579,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
                     />
                     <div className="px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-100 text-center transition flex items-center justify-center gap-2">
                       <Camera className="w-3.5 h-3.5 text-slate-500" />
-                      <span>{photoUrl ? 'Change Photo' : 'Upload Image File'}</span>
+                      <span>{photoUrl ? t('auth.register.photoChange') : t('auth.register.photoUpload')}</span>
                     </div>
                   </label>
                 </div>
@@ -568,26 +587,26 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
 
               {/* Background */}
               <h3 className={subHeadingClass}>
-                <BookOpen className="w-3.5 h-3.5" /> Biography & Qualifications
+                <BookOpen className="w-3.5 h-3.5" /> {t('profile.biography')} & {t('profile.qualifications')}
               </h3>
 
               <div>
-                <label className={labelClass}>Biography</label>
+                <label className={labelClass}>{t('profile.biography')}</label>
                 <textarea
                   value={biography}
                   onChange={(e) => setBiography(e.target.value)}
-                  placeholder="A short introduction about yourself, your faith journey, and service in the church..."
+                  placeholder={t('auth.register.bioPh')}
                   rows={3}
                   className={`${inputClass} resize-none`}
                 />
               </div>
 
               <div>
-                <label className={labelClass}>Qualifications (Education Background)</label>
+                <label className={labelClass}>{t('auth.register.qualsLabel')}</label>
                 <textarea
                   value={qualifications}
                   onChange={(e) => setQualifications(e.target.value)}
-                  placeholder="e.g. Diploma in Education, University of Limpopo (2015)"
+                  placeholder={t('auth.register.qualsPh')}
                   rows={2}
                   className={`${inputClass} resize-none`}
                 />
@@ -595,12 +614,12 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
 
               {/* Church */}
               <h3 className={subHeadingClass}>
-                <Building2 className="w-3.5 h-3.5" /> Church Details
+                <Building2 className="w-3.5 h-3.5" /> {t('auth.register.churchHeading')}
               </h3>
 
               <div className="grid grid-cols-2 gap-2.5">
                 <div>
-                  <label className={labelClass}>Section</label>
+                  <label className={labelClass}>{t('auth.register.section')}</label>
                   <select
                     value={section}
                     onChange={(e) => setSection(e.target.value)}
@@ -614,7 +633,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
                   </select>
                 </div>
                 <div>
-                  <label className={labelClass}>Branch *</label>
+                  <label className={labelClass}>{t('auth.register.branch')} *</label>
                   {branchPickerOpen ? (
                     <div className="border border-slate-200 rounded-xl bg-white shadow-lg overflow-hidden animate-in fade-in duration-100">
                       <div className="relative border-b border-slate-100">
@@ -624,7 +643,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
                           autoFocus
                           value={branchQuery}
                           onChange={(e) => setBranchQuery(e.target.value)}
-                          placeholder="Type to filter 171 branches..."
+                          placeholder={t('auth.register.branchFilterPh')}
                           className="w-full pl-8 pr-8 py-2.5 text-xs font-semibold text-slate-900 focus:outline-hidden"
                         />
                         <button
@@ -634,7 +653,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
                             setBranchQuery('');
                           }}
                           className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-full text-slate-400 hover:text-slate-700 transition"
-                          aria-label="Close branch search"
+                          aria-label={t('common.close')}
                         >
                           <X className="w-3.5 h-3.5" />
                         </button>
@@ -670,7 +689,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
                           ))
                         ) : (
                           <div className="p-3 text-xs text-slate-400 text-center">
-                            No branches match "{branchQuery}"
+                            {t('auth.register.noBranches', { query: branchQuery })}
                           </div>
                         )}
                       </div>
@@ -685,7 +704,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
                           : 'text-slate-400'
                       } hover:bg-slate-100 focus:outline-hidden focus:ring-2 focus:ring-[#3F76C5]`}
                     >
-                      <span className="truncate">{selectedBranch || 'Search & select your branch...'}</span>
+                      <span className="truncate">{selectedBranch || t('auth.register.branchSearchPh')}</span>
                       <Search className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                     </button>
                   )}
@@ -694,62 +713,62 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
 
               {/* Contact */}
               <h3 className={subHeadingClass}>
-                <Mail className="w-3.5 h-3.5" /> Contact Details
+                <Mail className="w-3.5 h-3.5" /> {t('profile.contactTitle')}
               </h3>
 
               <div>
-                <label className={labelClass}>Email Address *</label>
+                <label className={labelClass}>{t('auth.register.email')} *</label>
                 <input
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="e.g. masego.tau@gmail.com"
+                  placeholder={t('common.emailPh')}
                   className={inputClass}
                 />
               </div>
 
               <div>
-                <label className={labelClass}>Physical Address</label>
+                <label className={labelClass}>{t('auth.register.physicalAddress')}</label>
                 <textarea
                   value={physicalAddress}
                   onChange={(e) => setPhysicalAddress(e.target.value)}
-                  placeholder="Stand / Street, Town, Province / District"
+                  placeholder={t('auth.register.physicalAddressPh')}
                   rows={2}
                   className={`${inputClass} resize-none`}
                 />
               </div>
 
               <div>
-                <label className={labelClass}>Postal Address</label>
+                <label className={labelClass}>{t('profile.postalAddress')}</label>
                 <input
                   type="text"
                   value={postalAddress}
                   onChange={(e) => setPostalAddress(e.target.value)}
-                  placeholder="P.O. Box, Town, Postal Code"
+                  placeholder={t('auth.register.postalAddressPh')}
                   className={inputClass}
                 />
               </div>
 
               {/* Family */}
               <h3 className={subHeadingClass}>
-                <Heart className="w-3.5 h-3.5" /> Next of Kin & Family Members
+                <Heart className="w-3.5 h-3.5" /> {t('auth.register.familyHeading')}
               </h3>
 
               <div className="p-3 rounded-2xl border border-slate-200 bg-slate-50/60 space-y-2.5">
                 <div>
-                  <label className={labelClass}>Next of Kin — Full Name</label>
+                  <label className={labelClass}>{t('auth.register.nextOfKin')}</label>
                   <input
                     type="text"
                     value={kinName}
                     onChange={(e) => setKinName(e.target.value)}
-                    placeholder="e.g. Mme Kea Tau"
+                    placeholder={t('auth.register.nextOfKinPh')}
                     className={inputClass}
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-2.5">
                   <div>
-                    <label className={labelClass}>Relation</label>
+                    <label className={labelClass}>{t('auth.register.kinRelation')}</label>
                     <select
                       value={kinRelation}
                       onChange={(e) => setKinRelation(e.target.value)}
@@ -757,13 +776,13 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
                     >
                       {KIN_RELATIONS.map((r) => (
                         <option key={r} value={r}>
-                          {r}
+                          {kinRelationLabels[r] ?? r}
                         </option>
                       ))}
                     </select>
                   </div>
                   <div>
-                    <label className={labelClass}>Next of Kin Phone</label>
+                    <label className={labelClass}>{t('auth.register.nextOfKinPhone')}</label>
                     <input
                       type="tel"
                       value={kinPhone}
@@ -777,19 +796,19 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
 
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className={`${labelClass} mb-0`}>Family Members (If Applicable)</label>
+                  <label className={`${labelClass} mb-0`}>{t('auth.register.familyLabel')}</label>
                   <button
                     type="button"
                     onClick={() => setFamilyMembers((prev) => [...prev, { name: '', relation: '' }])}
                     className="flex items-center gap-1 text-[10px] font-extrabold text-slate-900 bg-slate-100 hover:bg-slate-200 px-2 py-1 rounded-full transition active:scale-95"
                   >
-                    <Plus className="w-3 h-3" /> Add Member
+                    <Plus className="w-3 h-3" /> {t('auth.register.addMember')}
                   </button>
                 </div>
 
                 {familyMembers.length === 0 ? (
                   <p className="text-[11px] text-slate-400 font-medium px-1">
-                    No family members added. Use "Add Member" to register household members.
+                    {t('auth.register.familyEmpty')}
                   </p>
                 ) : (
                   <div className="space-y-2">
@@ -799,21 +818,21 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
                           type="text"
                           value={member.name}
                           onChange={(e) => updateFamilyMember(idx, 'name', e.target.value)}
-                          placeholder="Full name"
+                          placeholder={t('auth.register.memberNamePh')}
                           className={`${inputClass} flex-1 min-w-0`}
                         />
                         <input
                           type="text"
                           value={member.relation}
                           onChange={(e) => updateFamilyMember(idx, 'relation', e.target.value)}
-                          placeholder="e.g. Spouse, Son (12)"
+                          placeholder={t('auth.register.memberRelationPh')}
                           className={`${inputClass} w-28 shrink-0`}
                         />
                         <button
                           type="button"
                           onClick={() => setFamilyMembers((prev) => prev.filter((_, i) => i !== idx))}
                           className="p-2 rounded-xl text-red-500 hover:bg-red-50 transition shrink-0"
-                          aria-label="Remove family member"
+                          aria-label={t('auth.register.removeMember')}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -830,7 +849,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
               onClick={() => setMode('review')}
               className="w-full py-3.5 rounded-full bg-[#0A2A52] text-white font-extrabold text-sm hover:bg-[#164A86] transition shadow-md active:scale-98 disabled:opacity-50 mt-2"
             >
-              Continue to Review
+              {t('auth.register.reviewCta')}
             </button>
           </div>
         )}
@@ -839,14 +858,14 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
         {mode === 'review' && (
           <div className="py-3 space-y-4 animate-in fade-in duration-150 flex-1 overflow-y-auto pr-1">
             <div className="flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-widest">
-              <span>Step 3 of 3</span>
-              <span>Review</span>
+              <span>{t('auth.stepOf', { step: 3, total: 3 })}</span>
+              <span>{t('auth.register.reviewBadge')}</span>
             </div>
 
             <div>
-              <h2 className="text-xl font-black text-[#0A2A52]">Review Registration</h2>
+              <h2 className="text-xl font-black text-[#0A2A52]">{t('auth.register.reviewTitle')}</h2>
               <p className="text-xs text-slate-500 mt-0.5">
-                Confirm your details before submitting to branch administration.
+                {t('auth.register.reviewSub')}
               </p>
             </div>
 
@@ -858,7 +877,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
                       photoUrl ||
                       'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=300&auto=format&fit=crop&q=80'
                     }
-                    alt="Member Avatar"
+                    alt={t('auth.register.avatarAlt')}
                     className="w-full h-full object-cover"
                   />
                 </div>
@@ -872,16 +891,16 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
 
               <div className="pt-2 border-t border-slate-200/60 space-y-2">
                 {[
-                  ['Age', age ? `${age} years` : '—'],
-                  ['Marriage Status', marriageStatus],
-                  ['Section', section],
-                  ['Branch', selectedBranch || 'Silo'],
-                  ['Email', email || '—'],
-                  ['Physical Address', physicalAddress || '—'],
-                  ['Postal Address', postalAddress || '—'],
-                  ['Qualifications', qualifications || '—'],
-                  ['Next of Kin', kinName ? `${kinName} (${kinRelation})` : '—'],
-                  ['Next of Kin Phone', kinPhone || '—'],
+                  [t('auth.register.age'), age ? t('profile.yearsOld', { age }) : '—'],
+                  [t('auth.register.marital'), marriageStatus],
+                  [t('auth.register.section'), section],
+                  [t('auth.register.branch'), selectedBranch || 'Silo'],
+                  [t('auth.register.email'), email || '—'],
+                  [t('auth.register.physicalAddress'), physicalAddress || '—'],
+                  [t('profile.postalAddress'), postalAddress || '—'],
+                  [t('profile.qualifications'), qualifications || '—'],
+                  [t('auth.register.nextOfKin'), kinName ? `${kinName} (${kinRelation})` : '—'],
+                  [t('auth.register.nextOfKinPhone'), kinPhone || '—'],
                 ].map(([k, v]) => (
                   <div key={k} className="flex justify-between gap-3">
                     <span className="text-slate-400 font-bold uppercase text-[10px] shrink-0">{k}:</span>
@@ -892,7 +911,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
 
               {biography.trim() && (
                 <div className="pt-2 border-t border-slate-200/60">
-                  <span className="text-slate-400 font-bold uppercase text-[10px] block mb-0.5">Biography:</span>
+                  <span className="text-slate-400 font-bold uppercase text-[10px] block mb-0.5">{t('profile.biography')}:</span>
                   <p className="font-semibold text-slate-800 leading-snug">{biography}</p>
                 </div>
               )}
@@ -900,7 +919,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
               {familyMembers.some((m) => m.name.trim()) && (
                 <div className="pt-2 border-t border-slate-200/60">
                   <span className="text-slate-400 font-bold uppercase text-[10px] block mb-1">
-                    Family Members ({familyMembers.filter((m) => m.name.trim()).length}):
+                    {t('auth.register.familyCount', { count: familyMembers.filter((m) => m.name.trim()).length })}
                   </span>
                   <ul className="space-y-1">
                     {familyMembers
@@ -909,7 +928,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
                         <li key={i} className="font-bold text-slate-900 flex items-center gap-1.5">
                           <Users className="w-3 h-3 text-slate-400 shrink-0" />
                           <span>
-                            {m.name} <span className="text-slate-500 font-semibold">— {m.relation || 'Family'}</span>
+                            {m.name} <span className="text-slate-500 font-semibold">— {m.relation || t('common.relationship.family')}</span>
                           </span>
                         </li>
                       ))}
@@ -929,7 +948,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
               disabled={isSubmitting}
               className="w-full py-3.5 rounded-full bg-[#0A2A52] text-white font-extrabold text-sm hover:bg-[#164A86] transition shadow-lg active:scale-98 disabled:opacity-50"
             >
-              {isSubmitting ? 'Submitting…' : 'Submit Registration'}
+              {isSubmitting ? t('auth.register.submitting') : t('auth.register.submit')}
             </button>
           </div>
         )}
@@ -942,9 +961,9 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
             </div>
 
             <div>
-              <h2 className="text-2xl font-black text-[#0A2A52]">You're almost in!</h2>
+              <h2 className="text-2xl font-black text-[#0A2A52]">{t('auth.register.almostTitle')}</h2>
               <p className="text-xs text-slate-600 mt-2 leading-relaxed px-2">
-                <strong className="text-slate-900">{selectedBranch || 'Silo'}</strong> will confirm your details, then your membership card will be ready. We'll let you know.
+                {t('auth.register.confirmBody', { branch: selectedBranch || 'Silo' })}
               </p>
             </div>
 
@@ -953,7 +972,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
                 onClick={onClose}
                 className="w-full py-4 rounded-full bg-[#0A2A52] text-white font-extrabold text-sm hover:bg-[#164A86] transition shadow-lg active:scale-98"
               >
-                Go to My Card
+                {t('auth.register.goToCard')}
               </button>
             </div>
           </div>
@@ -963,20 +982,20 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
         {mode === 'direct_login' && (
           <div className="py-4 space-y-5 animate-in fade-in duration-150">
             <div>
-              <h2 className="text-xl font-black text-[#0A2A52]">Log In to IPHC</h2>
+              <h2 className="text-xl font-black text-[#0A2A52]">{t('auth.signIn.loginTitle')}</h2>
               <p className="text-xs text-slate-500 mt-1">
-                Enter your registered email address and password.
+                {t('auth.signIn.directSub')}
               </p>
             </div>
 
             <form onSubmit={handleDirectLoginSubmit} className="space-y-4 pt-1">
               <div>
-                <label className={labelClass}>Email Address *</label>
+                <label className={labelClass}>{t('auth.signIn.email')} *</label>
                 <input
                   type="email"
                   required
                   autoComplete="username"
-                  placeholder="you@example.com"
+                  placeholder={t('common.emailPh')}
                   value={loginPhoneInput}
                   onChange={(e) => setLoginPhoneInput(e.target.value)}
                   className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-[#3F76C5]"
@@ -984,7 +1003,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
               </div>
 
               <div>
-                <label className={labelClass}>Password *</label>
+                <label className={labelClass}>{t('auth.signIn.password')} *</label>
                 <div className="relative">
                   <input
                     type={showLoginPassword ? 'text' : 'password'}
@@ -997,7 +1016,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowLoginPassword((show) => !show)}
-                    aria-label={showLoginPassword ? 'Hide password' : 'Show password'}
+                    aria-label={showLoginPassword ? t('password.hide') : t('password.show')}
                     className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 rounded-full text-slate-400 hover:text-slate-700 transition"
                   >
                     {showLoginPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
@@ -1009,7 +1028,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
                     onClick={openForgotPassword}
                     className="text-[11px] font-bold text-[#3F76C5] hover:underline transition"
                   >
-                    Forgot password?
+                    {t('auth.signIn.forgot')}
                   </button>
                 </div>
               </div>
@@ -1031,7 +1050,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
                 disabled={isSubmitting}
                 className="w-full py-3.5 rounded-full bg-[#0A2A52] text-white font-extrabold text-sm hover:bg-[#164A86] transition shadow-md active:scale-98 disabled:opacity-50"
               >
-                {isSubmitting ? 'Signing in…' : 'Log In'}
+                {isSubmitting ? t('auth.signIn.submitting') : t('auth.signIn.submit')}
               </button>
             </form>
           </div>
@@ -1041,36 +1060,34 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
         {mode === 'forgot_password' && (
           <div className="py-4 space-y-5 animate-in fade-in duration-150">
             <div>
-              <h2 className="text-xl font-black text-[#0A2A52]">Reset Your Password</h2>
+              <h2 className="text-xl font-black text-[#0A2A52]">{t('auth.reset.requestTitle')}</h2>
               <p className="text-xs text-slate-500 mt-1">
-                Enter the email address registered on your membership account and we'll send you a link to set a new password.
+                {t('auth.reset.introRequest')}
               </p>
             </div>
 
             {resetSentTo ? (
               <div className="space-y-4 pt-1">
                 <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-800 leading-relaxed">
-                  If an account exists for <strong>{resetSentTo}</strong>, a password reset link is on its way.
-                  Open the email on this device and follow the link to choose a new password. Check your spam
-                  folder if it doesn't arrive within a few minutes.
+                  {t('auth.reset.successLinkLong', { email: resetSentTo })}
                 </div>
                 <button
                   type="button"
                   onClick={() => setMode('direct_login')}
                   className="w-full py-3.5 rounded-full bg-[#0A2A52] text-white font-extrabold text-sm hover:bg-[#164A86] transition shadow-md active:scale-98"
                 >
-                  Back to Log In
+                  {t('auth.reset.backToSignIn')}
                 </button>
               </div>
             ) : (
               <form onSubmit={handleForgotPasswordSubmit} className="space-y-4 pt-1">
                 <div>
-                  <label className={labelClass}>Email Address *</label>
+                  <label className={labelClass}>{t('auth.reset.email')} *</label>
                   <input
                     type="email"
                     required
                     autoComplete="email"
-                    placeholder="you@example.com"
+                    placeholder={t('common.emailPh')}
                     value={resetEmail}
                     onChange={(e) => setResetEmail(e.target.value)}
                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-[#3F76C5]"
@@ -1088,7 +1105,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
                   disabled={isSubmitting}
                   className="w-full py-3.5 rounded-full bg-[#0A2A52] text-white font-extrabold text-sm hover:bg-[#164A86] transition shadow-md active:scale-98 disabled:opacity-50"
                 >
-                  {isSubmitting ? 'Sending…' : 'Send Reset Link'}
+                  {isSubmitting ? t('auth.reset.sending') : t('auth.reset.send')}
                 </button>
 
                 <button
@@ -1096,7 +1113,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
                   onClick={() => setMode('direct_login')}
                   className="w-full text-xs font-bold text-slate-600 hover:text-slate-900 py-1 transition"
                 >
-                  Back to Log In
+                  {t('auth.reset.backToSignIn')}
                 </button>
               </form>
             )}
@@ -1110,15 +1127,15 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
               <div className="w-14 h-14 rounded-full bg-[#0A2A52]/5 border border-[#0A2A52]/10 text-[#0A2A52] mx-auto flex items-center justify-center mb-3">
                 <KeyRound className="w-7 h-7" />
               </div>
-              <h2 className="text-xl font-black text-[#0A2A52]">Choose a New Password</h2>
+              <h2 className="text-xl font-black text-[#0A2A52]">{t('auth.reset.updateTitle')}</h2>
               <p className="text-xs text-slate-500 mt-1">
-                Enter a new password for your account. It must be at least 8 characters.
+                {t('auth.reset.introRecovered')}
               </p>
             </div>
 
             <form onSubmit={handleResetPasswordSubmit} className="space-y-4 pt-1">
               <div>
-                <label className={labelClass}>New Password *</label>
+                <label className={labelClass}>{t('auth.reset.newPassword')} *</label>
                 <input
                   type="password"
                   required
@@ -1131,7 +1148,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
               </div>
 
               <div>
-                <label className={labelClass}>Confirm New Password *</label>
+                <label className={labelClass}>{t('auth.reset.confirmNew')} *</label>
                 <input
                   type="password"
                   required
@@ -1154,7 +1171,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
                 disabled={isSubmitting}
                 className="w-full py-3.5 rounded-full bg-[#0A2A52] text-white font-extrabold text-sm hover:bg-[#164A86] transition shadow-md active:scale-98 disabled:opacity-50"
               >
-                {isSubmitting ? 'Updating…' : 'Update Password'}
+                {isSubmitting ? t('auth.reset.updating') : t('auth.reset.update')}
               </button>
 
               <button
@@ -1162,7 +1179,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
                 onClick={openForgotPassword}
                 className="w-full text-xs font-bold text-slate-600 hover:text-slate-900 py-1 transition"
               >
-                Request a new reset link
+                {t('auth.reset.requestNewLink')}
               </button>
             </form>
           </div>

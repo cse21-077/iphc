@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { MediaItem } from '../types';
+import { useTranslation } from '../data/i18n';
 import {
   Play,
   Pause,
@@ -27,6 +28,8 @@ export const MediaView: React.FC<MediaViewProps> = ({ mediaItems, onBack }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackProgress, setPlaybackProgress] = useState(35);
   const [lightboxImage, setLightboxImage] = useState<{ src: string; caption: string } | null>(null);
+
+  const { t } = useTranslation();
 
   const categories = ['All', 'Sermons', 'Announcements', 'Events', 'Archive'];
 
@@ -56,18 +59,18 @@ export const MediaView: React.FC<MediaViewProps> = ({ mediaItems, onBack }) => {
               className="flex items-center gap-1 text-slate-600 text-xs font-bold"
             >
               <ArrowLeft className="w-4 h-4" />
-              <span>Back</span>
+              <span>{t('common.back')}</span>
             </button>
           ) : (
             <div />
           )}
           <h2 className="text-xl font-extrabold text-slate-900 tracking-tight">
-            Church Media & Sermons
+            {t('media.heading')}
           </h2>
           <div className="w-10" />
         </div>
         <p className="text-xs text-slate-500 mt-0.5 text-center">
-          Approved sermons, choral music, and Silo announcements
+          {t('media.subText')}
         </p>
 
         {mediaItems.length > 0 && (
@@ -94,9 +97,9 @@ export const MediaView: React.FC<MediaViewProps> = ({ mediaItems, onBack }) => {
         {filteredItems.length === 0 ? (
           <div className="rounded-3xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
             <ImageIcon className="mx-auto h-9 w-9 text-slate-300" />
-            <h3 className="mt-3 text-sm font-extrabold text-slate-800">No media published yet</h3>
+            <h3 className="mt-3 text-sm font-extrabold text-slate-800">{t('media.emptyTitle')}</h3>
             <p className="mx-auto mt-1 max-w-xs text-xs leading-relaxed text-slate-500">
-              Approved sermons, announcements, and gallery items will appear here when they are published.
+              {t('media.emptySub')}
             </p>
           </div>
         ) : filteredItems.map((item) => {
@@ -139,7 +142,7 @@ export const MediaView: React.FC<MediaViewProps> = ({ mediaItems, onBack }) => {
                   {item.isMemberOnly && (
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#D13138]/90 text-white flex items-center gap-1">
                       <Lock className="w-2.5 h-2.5" />
-                      <span>Member Pass</span>
+                      <span>{t('media.memberPass')}</span>
                     </span>
                   )}
                 </div>
@@ -207,7 +210,7 @@ export const MediaView: React.FC<MediaViewProps> = ({ mediaItems, onBack }) => {
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <span className="text-[11px] font-bold uppercase tracking-wider text-[#3F76C5]">
-                Now Playing • {activeMedia.category}
+                {t('media.nowPlaying')} • {activeMedia.category}
               </span>
               <button
                 onClick={() => {
@@ -241,7 +244,7 @@ export const MediaView: React.FC<MediaViewProps> = ({ mediaItems, onBack }) => {
 
               <div className="absolute top-3 right-3 px-2 py-0.5 rounded-full bg-black/60 text-[10px] font-mono text-emerald-400 flex items-center gap-1 border border-emerald-500/30">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                <span>ONLINE STREAM</span>
+                <span>{t('media.onlineStream')}</span>
               </div>
             </div>
 
@@ -323,12 +326,12 @@ export const MediaView: React.FC<MediaViewProps> = ({ mediaItems, onBack }) => {
         >
           <div className="flex items-center justify-between p-4">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-300">
-              Silo Gallery • Official
+              {t('media.galleryBadge')}
             </span>
             <button
               onClick={() => setLightboxImage(null)}
               className="p-2 rounded-full bg-white/10 text-white hover:bg-white/20 transition"
-              aria-label="Close"
+              aria-label={t('common.close')}
             >
               <X className="w-5 h-5" />
             </button>

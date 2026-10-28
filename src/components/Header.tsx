@@ -1,5 +1,6 @@
 import React from 'react';
 import { Bell, Smartphone, Monitor } from 'lucide-react';
+import { useTranslation } from '../data/i18n';
 
 interface HeaderProps {
   unreadCount: number;
@@ -16,6 +17,8 @@ export const Header: React.FC<HeaderProps> = ({
   isFrameMode = false,
   onToggleFrameMode,
 }) => {
+  const { t } = useTranslation();
+
   return (
     <header className="sticky top-0 z-30 bg-white border-b border-gray-100 transition-colors">
       <div className="max-w-md mx-auto px-4 h-14 flex items-center justify-between">
@@ -24,7 +27,7 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="relative w-8 h-8 rounded-xl overflow-hidden border border-[#3F76C5]/25 bg-white flex items-center justify-center shadow-xs">
             <img
               src="/pwa-192x192.png"
-              alt="IPHC Emblem"
+              alt={t('common.iphcEmblem')}
               className="w-full h-full object-contain"
             />
           </div>
@@ -50,8 +53,8 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             onClick={onToggleFrameMode}
             className="hidden sm:flex p-2 rounded-xl text-[#6B7280] hover:text-[#1A1A1A] hover:bg-[#F3F4F6] transition"
-            title={isFrameMode ? "Switch to Full Screen View" : "Switch to Mobile Phone Frame View"}
-            aria-label="Toggle Phone Frame"
+            title={isFrameMode ? t('common.switchFullScreen') : t('common.switchPhoneFrame')}
+            aria-label={t('common.togglePhoneFrame')}
           >
             {isFrameMode ? (
               <Monitor className="w-4 h-4 text-[#4A4A4A]" />
@@ -65,7 +68,7 @@ export const Header: React.FC<HeaderProps> = ({
             id="header-notifications-btn"
             onClick={onOpenNotifications}
             className="relative p-2 rounded-xl text-[#0A2A52] hover:bg-[#3F76C5]/10 hover:text-[#3F76C5] active:scale-95 transition"
-            aria-label="Announcements & Notifications"
+            aria-label={t('notifications.title')}
           >
             <Bell className="w-5 h-5" />
             {unreadCount > 0 && (

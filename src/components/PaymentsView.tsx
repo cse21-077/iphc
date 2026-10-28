@@ -5,6 +5,7 @@ import {
   MemberProfile,
 } from '../types';
 import { paymentCategories } from '../data/initialData';
+import { useTranslation } from '../data/i18n';
 import {
   ArrowLeft,
   CreditCard,
@@ -43,15 +44,17 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({
     paymentCategories.find((c) => c.id === initialSelectedCategory) || paymentCategories[0]
   );
   const [customAmount, setCustomAmount] = useState<string>('500');
-  
+
   // Card details state (Card is the ONLY allowed payment method)
   const [cardNumber, setCardNumber] = useState('4532 8901 2345 6789');
   const [cardHolder, setCardHolder] = useState(`${member.title} ${member.name}`);
   const [cardExpiry, setCardExpiry] = useState('08/29');
   const [cardCvv, setCardCvv] = useState('831');
-  
+
   const [isProcessing, setIsProcessing] = useState(false);
   const [activeReceipt, setActiveReceipt] = useState<PaymentRecord | null>(null);
+
+  const { t } = useTranslation();
 
   const totalGiven = paymentRecords.reduce((acc, curr) => acc + curr.amount, 0);
 
@@ -118,10 +121,10 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({
           className="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-black p-1.5 rounded-full bg-slate-100 transition active:scale-95"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Back</span>
+          <span>{t('common.back')}</span>
         </button>
 
-        <h2 className="text-lg font-black text-[#181D20] tracking-tight">Church Giving</h2>
+        <h2 className="text-lg font-black text-[#181D20] tracking-tight">{t('payments.churchGiving')}</h2>
 
         <div className="w-16" />
       </div>
@@ -136,7 +139,7 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({
               : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          Card Giving
+          {t('payments.cardGiving')}
         </button>
         <button
           onClick={() => setActiveTab('history')}
@@ -146,7 +149,7 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({
               : 'text-slate-600 hover:text-slate-900'
           }`}
         >
-          Receipts ({paymentRecords.length})
+          {t('payments.receipts', { count: paymentRecords.length })}
         </button>
       </div>
 
@@ -155,7 +158,7 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({
           {/* Category Selector Grid */}
           <div className="bg-white rounded-[26px] p-4 border border-slate-200/90 shadow-xs space-y-3">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
-              1. Select Giving Category
+              {t('payments.stepCategory')}
             </span>
             <div className="grid grid-cols-2 gap-2.5">
               {paymentCategories.map((cat) => {
@@ -204,7 +207,7 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({
           {/* Amount Selection */}
           <div className="bg-white rounded-[26px] p-4 border border-slate-200/90 shadow-xs space-y-3">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">
-              2. Choose or Enter Amount (ZAR)
+              {t('payments.stepAmount')}
             </span>
 
             {/* Quick Amount Pills */}
@@ -246,7 +249,7 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({
               <div className="flex items-center gap-2">
                 <CreditCard className="w-4 h-4 text-[#181D20]" />
                 <span className="text-xs font-extrabold uppercase tracking-wider text-slate-900">
-                  Card Details
+                  {t('payments.cardDetails')}
                 </span>
               </div>
               <div className="flex items-center gap-1.5">
@@ -262,7 +265,7 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({
             {/* Card Number */}
             <div>
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                Card Number
+                {t('payments.cardNumber')}
               </label>
               <div className="relative">
                 <input
@@ -280,7 +283,7 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({
             {/* Cardholder Name */}
             <div>
               <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                Cardholder Name
+                {t('payments.cardholderName')}
               </label>
               <input
                 type="text"
@@ -294,7 +297,7 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({
             <div className="grid grid-cols-2 gap-2.5">
               <div>
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                  Expiry (MM/YY)
+                  {t('payments.expiry')}
                 </label>
                 <input
                   type="text"
@@ -322,13 +325,13 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({
 
             <div className="flex items-center gap-1.5 text-[10px] text-slate-500 pt-1">
               <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-              <span>3D-Secure 2.0 bank encryption</span>
+              <span>{t('payments.secureNote')}</span>
             </div>
           </div>
 
           {/* Member Confirmation Summary Note */}
           <div className="p-3 rounded-2xl bg-slate-100 text-[11px] text-slate-600 flex items-center justify-between">
-            <span>Allocated to: <strong>{member.name}</strong></span>
+            <span>{t('payments.allocatedTo')} <strong>{member.name}</strong></span>
             <span className="font-mono text-slate-500 font-bold">{member.membershipNumber}</span>
           </div>
 
@@ -342,12 +345,12 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({
               {isProcessing ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Processing Card Payment...</span>
+                  <span>{t('payments.processing')}</span>
                 </>
               ) : (
                 <>
                   <CreditCard className="w-4 h-4" />
-                  <span>Give R{customAmount || 0} via Card</span>
+                  <span>{t('payments.giveButton', { amount: customAmount || 0 })}</span>
                 </>
               )}
             </button>
@@ -359,11 +362,11 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({
           {/* Summary Box */}
           <div className="bg-gradient-to-br from-[#181D20] to-[#2B3237] text-white p-5 rounded-[26px] shadow-md">
             <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">
-              Total Recorded Giving
+              {t('payments.totalGiving')}
             </p>
             <h3 className="text-2xl font-black mt-0.5">R{totalGiven.toLocaleString()}</h3>
             <p className="text-[11px] text-slate-300/80 mt-1">
-              Receipts are stored on your device and synchronized with Church Branch Records.
+              {t('payments.historyNote')}
             </p>
           </div>
 
@@ -381,7 +384,7 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({
                     <div className="flex items-center gap-2 text-[11px] text-slate-500 mt-0.5">
                       <span>{pay.date}</span>
                       <span>•</span>
-                      <span>Card</span>
+                      <span>{t('payments.methodCard')}</span>
                     </div>
                   </div>
                 </div>
@@ -414,7 +417,7 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({
             {/* Official Watermark & Header */}
             <div className="text-center pb-4 border-b border-dashed border-slate-200">
               <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto mb-2 stroke-[2.2]" />
-              <h3 className="text-lg font-black text-slate-900">Official Church Receipt</h3>
+              <h3 className="text-lg font-black text-slate-900">{t('payments.officialReceipt')}</h3>
               <p className="text-xs text-slate-500 mt-0.5 font-medium">
                 International Pentecost Holiness Church
               </p>
@@ -426,33 +429,33 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({
             {/* Receipt Body */}
             <div className="py-4 space-y-3 text-xs">
               <div className="flex justify-between text-slate-600">
-                <span>Date & Time:</span>
+                <span>{t('payments.dateTime')}</span>
                 <span className="font-bold text-slate-900">{activeReceipt.date}</span>
               </div>
               <div className="flex justify-between text-slate-600">
-                <span>Member Name:</span>
+                <span>{t('payments.memberName')}</span>
                 <span className="font-bold text-slate-900">{activeReceipt.memberName}</span>
               </div>
               <div className="flex justify-between text-slate-600">
-                <span>Membership No:</span>
+                <span>{t('payments.membershipNo')}</span>
                 <span className="font-mono font-bold text-slate-900">
                   {activeReceipt.memberNumber}
                 </span>
               </div>
               <div className="flex justify-between text-slate-600">
-                <span>Offering Fund:</span>
+                <span>{t('payments.offeringFund')}</span>
                 <span className="font-bold text-[#D13138]">{activeReceipt.categoryLabel}</span>
               </div>
               <div className="flex justify-between text-slate-600">
-                <span>Channel:</span>
+                <span>{t('payments.channel')}</span>
                 <span className="font-semibold text-slate-700 flex items-center gap-1">
                   <CreditCard className="w-3.5 h-3.5 text-[#3F76C5]" />
-                  Card (Verified)
+                  {t('payments.cardVerified')}
                 </span>
               </div>
 
               <div className="pt-3 border-t border-dashed border-slate-200 flex justify-between items-baseline">
-                <span className="text-sm font-bold text-slate-900">Total Contribution:</span>
+                <span className="text-sm font-bold text-slate-900">{t('payments.totalContribution')}</span>
                 <span className="text-xl font-black text-slate-900">
                   R{activeReceipt.amount.toFixed(2)}
                 </span>
@@ -463,27 +466,31 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({
             <div className="pt-4 border-t border-slate-100 flex gap-2">
               <button
                 onClick={() => {
-                  alert(`Receipt ${activeReceipt.receiptNumber} downloaded as PDF.`);
+                  alert(t('payments.alertDownloaded', { number: activeReceipt.receiptNumber }));
                   setActiveReceipt(null);
                 }}
                 className="flex-1 py-2.5 rounded-xl bg-slate-900 text-white font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-slate-800 transition"
               >
                 <Download className="w-4 h-4" />
-                <span>Save PDF</span>
+                <span>{t('payments.savePdf')}</span>
               </button>
               <button
                 onClick={() => {
                   if (navigator.share) {
                     navigator.share({
-                      title: 'IPHC Church Contribution Receipt',
-                      text: `Receipt for ${activeReceipt.categoryLabel} contribution of R${activeReceipt.amount} by ${activeReceipt.memberName}.`,
+                      title: t('payments.shareTitle'),
+                      text: t('payments.shareText', {
+                        category: activeReceipt.categoryLabel,
+                        amount: activeReceipt.amount,
+                        name: activeReceipt.memberName,
+                      }),
                     }).catch(() => {});
                   } else {
-                    alert('Receipt details copied to clipboard.');
+                    alert(t('payments.alertCopied'));
                   }
                 }}
                 className="p-2.5 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 transition"
-                title="Share"
+                title={t('payments.share')}
               >
                 <Share2 className="w-4 h-4" />
               </button>

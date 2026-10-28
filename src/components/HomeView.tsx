@@ -13,6 +13,7 @@ import {
   ArrowUpRight,
   Bookmark,
 } from 'lucide-react';
+import { useTranslation } from '../data/i18n';
 
 interface HomeViewProps {
   member: MemberProfile;
@@ -43,6 +44,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
     silo: true,
   });
   const [photoFailed, setPhotoFailed] = useState(false);
+  const { t } = useTranslation();
   const initials = member.name
     .split(' ')
     .filter(Boolean)
@@ -63,7 +65,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
         <div>
           <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 mb-0.5">
             <Sun className="w-3.5 h-3.5 text-[#3F76C5]" />
-            <span>Kgotso</span>
+            <span>{t('home.kgotso')}</span>
           </div>
           <h1 className="text-2xl font-black text-[#0A2A52] tracking-tight">
             {member.title} {member.name}
@@ -77,8 +79,8 @@ export const HomeView: React.FC<HomeViewProps> = ({
           id="home-notice-badge"
           onClick={onOpenNotifications}
           className="mt-1 p-2 text-[#0A2A52] hover:text-[#3F76C5] active:scale-95 transition relative"
-          title="Announcements & Notifications"
-          aria-label="View Announcements"
+          title={t('notifications.titleTooltip')}
+          aria-label={t('notifications.viewAria')}
         >
           <Bell className="w-5 h-5 text-[#0A2A52] stroke-[2]" />
           {announcements.some((n) => !n.isRead) && (
@@ -106,11 +108,11 @@ export const HomeView: React.FC<HomeViewProps> = ({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 mb-0.5">
               <span className="text-[10px] font-bold uppercase tracking-widest text-blue-200/90">
-                IPHC Digital ID
+                {t('home.digitalId')}
               </span>
               {member.isPending && (
                 <span className="px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 text-[9px] font-extrabold uppercase">
-                  Pending
+                  {t('home.pending')}
                 </span>
               )}
             </div>
@@ -118,7 +120,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               {member.membershipNumber}
             </h2>
             <p className="text-xs text-blue-100 font-semibold mt-0.5 truncate">
-              {member.isPending ? `Verification by ${member.branch}` : 'Official Member Clearance'}
+              {member.isPending ? t('home.verificationBy', { branch: member.branch }) : t('home.officialClearance')}
             </p>
           </div>
 
@@ -150,7 +152,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
             {member.section}
           </span>
           <span className="text-[11px] font-bold text-blue-200 uppercase tracking-wider">
-            {member.isPending ? 'Pending Approval Notice →' : 'Tap for Scanner →'}
+            {member.isPending ? t('home.pendingNotice') : t('home.tapForScanner')}
           </span>
         </div>
       </div>
@@ -159,13 +161,13 @@ export const HomeView: React.FC<HomeViewProps> = ({
       <div className="space-y-3">
         <div className="flex items-center justify-between px-0.5">
           <h3 className="text-base font-extrabold text-[#181D20] tracking-tight">
-            Quick Actions
+            {t('home.quickActions')}
           </h3>
           <button
             onClick={() => onNavigateTab('calendar')}
             className="text-xs font-semibold text-slate-400 hover:text-slate-900 transition"
           >
-            See All
+            {t('common.seeAll')}
           </button>
         </div>
 
@@ -200,7 +202,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
                   {upcomingCeremony.title || 'Mokete wa Paseka'}
                 </h4>
                 <p className="text-xs text-slate-300 font-medium mt-0.5 truncate">
-                  {upcomingCeremony.startDate ? `${upcomingCeremony.startDate} · Tap to register` : '12 April · Tap to register'}
+                  {upcomingCeremony.startDate ? `${upcomingCeremony.startDate} · ${t('home.tapToRegister')}` : `12 April · ${t('home.tapToRegister')}`}
                 </p>
               </div>
             </div>
@@ -230,10 +232,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
             {/* Bottom Row: Clear Title & Subtitle */}
             <div className="relative z-10 min-w-0">
               <h4 className="text-sm font-black text-white leading-tight truncate">
-                Give
+                {t('home.give')}
               </h4>
               <p className="text-xs text-slate-300 font-medium mt-0.5 truncate">
-                Karolo, Polokano & more
+                {t('home.giveSub')}
               </p>
             </div>
           </div>
@@ -262,10 +264,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
             {/* Bottom Row: Broad Title & Subtitle */}
             <div className="relative z-10 min-w-0">
               <h4 className="text-sm font-black text-white leading-tight truncate">
-                Iphc Media
+                {t('media.titleCard')}
               </h4>
               <p className="text-xs text-slate-300 font-medium mt-0.5 truncate">
-                Latest sermons and music
+                {t('media.subCard')}
               </p>
             </div>
           </div>
@@ -277,7 +279,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
       <div className="flex items-center gap-2 text-[#0A2A52] mb-2">
           <BookOpen className="w-4 h-4 stroke-[2.2]" />
           <span className="text-[11px] font-black uppercase tracking-wider">
-            Daily Scripture Reflection
+            {t('home.dailyReflection')}
           </span>
         </div>
         <p className="text-xs italic text-slate-700 leading-relaxed font-medium">

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Home, Calendar, Scan, Briefcase, User } from 'lucide-react';
 import { ActiveTab } from '../types';
+import { useTranslation } from '../data/i18n';
 
 interface BottomNavProps {
   activeTab: ActiveTab;
@@ -13,6 +14,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   onChangeTab,
   onSelectTab,
 }) => {
+  const { t } = useTranslation();
   const handleTabChange = (tab: ActiveTab) => {
     if (typeof onChangeTab === 'function') {
       onChangeTab(tab);
@@ -24,7 +26,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40 pointer-events-none pb-[env(safe-area-inset-bottom,12px)] px-4 mb-2">
       <nav
-        aria-label="Bottom Navigation"
+        aria-label={t('tabs.navAria')}
         className="pointer-events-auto w-full max-w-md mx-auto bg-white/95 backdrop-blur-xl border border-slate-100 shadow-[0_12px_40px_rgba(0,0,0,0.08)] rounded-full px-3 py-1.5"
       >
         <div className="h-14 flex items-center justify-around">
@@ -38,7 +40,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                 ? 'text-[#3F76C5] bg-[#3F76C5]/10'
                 : 'text-slate-400 hover:text-[#3F76C5]'
             }`}
-            aria-label="Home"
+            aria-label={t('tabs.homeAria')}
           >
             <Home
               className={`w-5 h-5 transition-transform ${
@@ -49,7 +51,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
               <span className="w-1 h-1 rounded-full bg-[#3F76C5] mt-1" />
             ) : (
               <span className="text-[10px] tracking-wider mt-0.5 font-semibold">
-                Home
+                {t('tabs.home')}
               </span>
             )}
           </button>
@@ -64,7 +66,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                 ? 'text-[#3F76C5] bg-[#3F76C5]/10'
                 : 'text-slate-400 hover:text-[#3F76C5]'
             }`}
-            aria-label="Silo Ceremonies"
+            aria-label={t('tabs.siloAria')}
           >
             <Calendar
               className={`w-5 h-5 transition-transform ${
@@ -75,7 +77,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
               <span className="w-1 h-1 rounded-full bg-[#3F76C5] mt-1" />
             ) : (
               <span className="text-[10px] tracking-wider mt-0.5 font-semibold">
-                Silo
+                {t('tabs.silo')}
               </span>
             )}
           </button>
@@ -87,7 +89,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
               type="button"
               onClick={() => handleTabChange('scan')}
               className="w-12 h-12 bg-gradient-to-br from-[#3F76C5] to-[#0A2A52] hover:from-[#3566ac] hover:to-[#0d3560] rounded-full flex items-center justify-center shadow-[0_8px_22px_rgba(63,118,197,0.5)] border-2 border-white cursor-pointer transition-transform duration-150 active:scale-95 touch-manipulation focus:outline-hidden"
-              aria-label="Scan QR Code to Check In"
+              aria-label={t('tabs.scanAria')}
             >
               <Scan className="w-5 h-5 text-white stroke-[2.2]" />
             </button>
@@ -103,7 +105,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                 ? 'text-[#3F76C5] bg-[#3F76C5]/10'
                 : 'text-slate-400 hover:text-[#3F76C5]'
             }`}
-            aria-label="FLG Empire Directory"
+            aria-label={t('tabs.directoryAria')}
           >
             <Briefcase
               className={`w-5 h-5 transition-transform ${
@@ -114,7 +116,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
               <span className="w-1 h-1 rounded-full bg-[#3F76C5] mt-1" />
             ) : (
               <span className="text-[10px] tracking-wider mt-0.5 font-semibold">
-                Directory
+                {t('tabs.directory')}
               </span>
             )}
           </button>
@@ -129,7 +131,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                 ? 'text-[#3F76C5] bg-[#3F76C5]/10'
                 : 'text-slate-400 hover:text-[#3F76C5]'
             }`}
-            aria-label="Member Profile"
+            aria-label={t('tabs.profileAria')}
           >
             <User
               className={`w-5 h-5 transition-transform ${
@@ -140,7 +142,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
               <span className="w-1 h-1 rounded-full bg-[#3F76C5] mt-1" />
             ) : (
               <span className="text-[10px] tracking-wider mt-0.5 font-semibold">
-                Profile
+                {t('tabs.profile')}
               </span>
             )}
           </button>

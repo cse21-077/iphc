@@ -1,6 +1,7 @@
 import React from 'react';
 import { AnnouncementNotification } from '../types';
 import { Bell, X, CheckCheck } from 'lucide-react';
+import { useTranslation } from '../data/i18n';
 
 interface NotificationsModalProps {
   notifications: AnnouncementNotification[];
@@ -17,6 +18,8 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
   onMarkAllRead,
   onNotificationClick,
 }) => {
+  const { t } = useTranslation();
+
   if (!isOpen) return null;
 
   return (
@@ -27,8 +30,8 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
           <div className="flex items-center gap-2.5">
             <Bell className="w-5 h-5 text-[#181D20] stroke-[2.2]" />
             <div>
-              <h3 className="text-base font-black text-[#181D20] tracking-tight">Announcements</h3>
-              <p className="text-[11px] text-slate-400 font-medium">Official church notices</p>
+              <h3 className="text-base font-black text-[#181D20] tracking-tight">{t('notifications.title')}</h3>
+              <p className="text-[11px] text-slate-400 font-medium">{t('notifications.sub')}</p>
             </div>
           </div>
 
@@ -38,12 +41,12 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
               className="text-[11px] font-bold text-slate-600 hover:text-black flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 transition active:scale-95"
             >
               <CheckCheck className="w-3.5 h-3.5" />
-              <span>Mark read</span>
+              <span>{t('notifications.markAllRead')}</span>
             </button>
             <button
               onClick={onClose}
               className="p-1.5 rounded-full text-slate-400 hover:text-slate-700 transition"
-              aria-label="Close modal"
+              aria-label={t('common.close')}
             >
               <X className="w-5 h-5" />
             </button>
@@ -72,7 +75,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
                       <span className={`w-2 h-2 rounded-full shrink-0 ${isImportant ? 'bg-slate-950' : 'bg-[#D13138]'}`} />
                     )}
                     <span className={`text-[10px] font-extrabold uppercase tracking-wider ${isImportant ? 'text-slate-900' : 'text-slate-400'}`}>
-                      {n.scope} {isImportant && '• URGENT'}
+                      {n.scope} {isImportant && t('notifications.urgentTag')}
                     </span>
                   </div>
                   <span className={`text-[10px] font-bold ${isImportant ? 'text-slate-800' : 'text-slate-400'}`}>
@@ -97,7 +100,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
             onClick={onClose}
             className="w-full py-3 rounded-full bg-[#181D20] text-white font-bold text-xs hover:bg-black transition shadow-xs active:scale-98"
           >
-            Done
+            {t('common.done')}
           </button>
         </div>
       </div>

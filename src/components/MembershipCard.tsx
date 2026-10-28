@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { MemberProfile } from '../types';
+import { useTranslation } from '../data/i18n';
 import { QRCodeDisplay } from './QRCodeDisplay';
 import {
   ShieldCheck,
@@ -28,6 +29,7 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({
   const [internalExpanded, setInternalExpanded] = useState(false);
   const [isFlipped, setIsFlipped] = useState(false);
   const [highBrightness, setHighBrightness] = useState(false);
+  const { t } = useTranslation();
 
   const expanded = isExpanded || internalExpanded;
   const toggle = onToggleExpand || (() => setInternalExpanded((prev) => !prev));
@@ -55,10 +57,10 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({
         <div className="flex items-center justify-between gap-3 relative z-10">
           <div className="flex-1 min-w-0">
             <span className="text-[10px] uppercase font-bold tracking-widest text-blue-200/90 flex items-center gap-1.5">
-              <span>IPHC Digital ID</span>
+              <span>{t('card.digitalId')}</span>
               {member.isPending && (
                 <span className="px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-300 text-[9px] font-extrabold uppercase">
-                  Pending Branch Approval
+                  {t('card.pendingBranchApproval')}
                 </span>
               )}
             </span>
@@ -87,7 +89,7 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({
             {member.section}
           </span>
           <span className="text-[11px] font-bold text-blue-200 uppercase tracking-wider">
-            {member.isPending ? 'View Pending Status →' : 'Tap for Scanner →'}
+            {member.isPending ? t('card.viewPendingStatus') : t('card.tapForScanner')}
           </span>
         </div>
       </div>
@@ -105,7 +107,7 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-5 h-5 text-[#3F76C5]" />
                 <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  IPHC Digital Member Pass
+                  {t('card.memberPass')}
                 </span>
               </div>
 
@@ -119,7 +121,7 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({
                       ? 'bg-amber-100 text-amber-900'
                       : 'bg-slate-800 text-slate-300 hover:text-white'
                   }`}
-                  title="Toggle Maximum Screen Contrast for Usher Scanner"
+                  title={t('card.toggleBrightness')}
                 >
                   {highBrightness ? <Sun className="w-4 h-4 text-amber-600" /> : <SunMedium className="w-4 h-4" />}
                 </button>
@@ -129,7 +131,7 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({
                   id="card-flip-btn"
                   onClick={() => setIsFlipped(!isFlipped)}
                   className="p-2 rounded-full bg-slate-800 text-slate-300 hover:text-white transition"
-                  title="Flip Card (Front / Back)"
+                  title={t('card.flipCard')}
                 >
                   <RotateCcw className="w-4 h-4" />
                 </button>
@@ -149,7 +151,7 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({
             {!isFlipped ? (
               <div className="mt-4 text-center">
                 <p className="text-xs font-semibold text-[#D13138] uppercase tracking-wider mb-2">
-                  {member.isPending ? 'Registration Verification Pending' : 'Usher Check-In Scan Code'}
+                  {member.isPending ? t('card.registrationVerification') : t('card.usherScanCode')}
                 </p>
 
                 {/* Big QR Code */}
@@ -157,9 +159,9 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({
                   <QRCodeDisplay value={member.qrToken} size={210} />
                   {member.isPending && (
                     <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-xs rounded-xl flex flex-col items-center justify-center p-4 text-white">
-                      <p className="text-xs font-bold text-amber-300 uppercase">Verification Pending</p>
+                      <p className="text-xs font-bold text-amber-300 uppercase">{t('card.verificationPending')}</p>
                       <p className="text-[11px] text-slate-300 mt-1 leading-snug">
-                        {member.branch} is verifying your registration.
+                        {t('card.branchVerifying', { branch: member.branch })}
                       </p>
                     </div>
                   )}
@@ -177,7 +179,7 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({
                     member.isPending ? 'bg-amber-600/90 text-amber-100' : 'bg-emerald-600 text-white'
                   }`}>
                     <CheckCircle2 className="w-3.5 h-3.5 stroke-[2.5]" />
-                    <span>{member.isPending ? 'Card activates upon Branch Approval' : 'Valid for 2026 / 2027 Silo Entry'}</span>
+                    <span>{member.isPending ? t('card.activatesOnApproval') : t('card.validForSilo')}</span>
                   </div>
                 </div>
 
@@ -202,7 +204,7 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({
               <div className="mt-4 space-y-3.5 text-left">
                 <div className="p-3 rounded-2xl bg-slate-800/60 border border-slate-700/40">
                   <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-                    Church Branch & Section
+                    {t('card.churchBranchSection')}
                   </p>
                   <p className="text-sm font-bold text-white mt-0.5">{member.branch}</p>
                   <p className="text-xs text-blue-300 mt-0.5">{member.section}</p>
@@ -211,7 +213,7 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({
                 <div className="grid grid-cols-2 gap-2.5">
                   <div className="p-3 rounded-2xl bg-slate-800/60 border border-slate-700/40">
                     <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-                      Baptism Number
+                      {t('card.baptismNumber')}
                     </p>
                     <p className="text-xs font-mono font-bold text-white mt-1">
                       {member.baptismNumber}
@@ -219,17 +221,17 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({
                   </div>
                   <div className="p-3 rounded-2xl bg-slate-800/60 border border-slate-700/40">
                     <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-                      Member Since
+                      {t('profile.memberSince')}
                     </p>
                     <p className="text-xs font-bold text-white mt-1">
-                      Year {member.joinYear}
+                      {t('profile.year', { year: member.joinYear })}
                     </p>
                   </div>
                 </div>
 
                 <div className="p-3 rounded-2xl bg-slate-800/60 border border-slate-700/40">
                   <p className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-                    Emergency / Next of Kin
+                    {t('card.emergencyNextOfKin')}
                   </p>
                   <p className="text-sm font-semibold text-white mt-0.5">
                     {member.nextOfKin.name} ({member.nextOfKin.relation})
@@ -240,7 +242,7 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({
                 </div>
 
                 <div className="p-2.5 rounded-xl bg-[#3F76C5]/10 border border-[#3F76C5]/20 text-[#3F76C5] text-[11px] leading-relaxed">
-                  Notice: This digital credential is the official property of the International Pentecostal Holiness Church (IPHC). Non-transferable.
+                  {t('card.notice')}
                 </div>
               </div>
             )}
@@ -251,7 +253,7 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({
                 onClick={toggle}
                 className="w-full py-3 rounded-2xl bg-[#3F76C5] text-white font-bold text-sm hover:bg-[#3262a4] transition active:scale-98 shadow-md"
               >
-                Close Pass
+                {t('card.closePass')}
               </button>
             </div>
           </div>

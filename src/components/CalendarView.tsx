@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Ceremony, MemberProfile } from '../types';
+import { useTranslation } from '../data/i18n';
 import {
   Calendar as CalendarIcon,
   MapPin,
@@ -27,19 +28,6 @@ interface CalendarViewProps {
 // The Silo annual program year (demo timeline)
 const APP_YEAR = 2026;
 const APP_TODAY = '2026-09-03';
-
-const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-];
-
-const MONTH_SHORT = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-];
-
-// Week starts on Monday (South African convention); index 0 = Monday … 6 = Sunday
-const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 const toISO = (month: number, day: number) =>
   `${APP_YEAR}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -72,6 +60,16 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   ].filter(Boolean));
   const [customFamilyName, setCustomFamilyName] = useState('');
   const [isSuccessState, setIsSuccessState] = useState(false);
+
+  const { t, dateLocale } = useTranslation();
+
+  const monthFormatter = new Intl.DateTimeFormat(dateLocale, { month: 'long' });
+  const monthShortFormatter = new Intl.DateTimeFormat(dateLocale, { month: 'short' });
+  const weekdayFormatter = new Intl.DateTimeFormat(dateLocale, { weekday: 'short' });
+  const monthName = (month: number) => monthFormatter.format(new Date(APP_YEAR, month - 1, 1));
+  const monthNameShort = (month: number) => monthShortFormatter.format(new Date(APP_YEAR, month - 1, 1));
+  // Week starts on Monday (South African convention); index 0 = Monday … 6 = Sunday
+  const weekdayName = (dayIndex: number) => weekdayFormatter.format(new Date(2024, 0, 1 + dayIndex)); // 2024-01-01 was a Monday
 
   const monthOf = (c: Ceremony) =>
     c.month ?? parseInt(c.startDate.split('-')[1], 10);
@@ -171,7 +169,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
         </span>
         {isPast && (
           <span className="absolute top-3.5 right-3.5 z-10 px-2.5 py-1 rounded-full bg-white/85 text-slate-600 text-[10px] font-extrabold uppercase tracking-wider">
-            Completed
+            {t('calendar.completed')}
           </span>
         )}
 
@@ -189,7 +187,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           <div className="flex items-center gap-2 shrink-0">
             {ceremony.isRegistered ? (
               <span className="text-[11px] font-bold text-emerald-300 px-2 py-1">
-                Registered
+                {t('calendar.registered')}
               </span>
             ) : ceremony.isPreRegistrationOpen && !isPast ? (
               <button
@@ -199,7 +197,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                 }}
                 className="px-3.5 py-1.5 rounded-full bg-white text-[#181D20] text-xs font-bold hover:bg-slate-100 transition active:scale-95 shadow-xs"
               >
-                Pre-Register
+                {t('calendar.register')}
               </button>
             ) : null}
           </div>
@@ -215,10 +213,12 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
       <section key={month}>
         <div className="flex items-center gap-2.5 mb-2.5 mt-1">
           <h2 className="text-base font-black text-[#181D20] tracking-tight">
-            {MONTH_NAMES[month - 1]}
+            {monthName(month)}
           </h2>
           <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[10px] font-extrabold">
-            {events.length} {events.length === 1 ? 'event' : 'events'}
+            {events.length === 1
+              ? t('calendar.eventCountOne', { count: events.length })
+              : t('calendar.eventCount', { count: events.length })}
           </span>
           <div className="flex-1 h-px bg-slate-100" />
         </div>
@@ -241,10 +241,10 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
       {/* Top Banner */}
       <div className="p-4 bg-white border-b border-gray-100">
         <h1 className="text-xl sm:text-2xl font-black text-[#181D20] tracking-tight">
-          Silo Calendar
+          {t('calendar.heading')}
         </h1>
         <p className="text-xs text-slate-400 font-normal mt-0.5">
-          Annual pilgrimage calendar & sacred gatherings
+          {t('calendar.subheading')}
         </p>
 
         {/* View Toggle: Calendar vs List */}
@@ -258,7 +258,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             }`}
           >
             <LayoutGrid className="w-3.5 h-3.5" />
-            Calendar View
+            {t('calendar.viewCalendar')}
           </button>
           <button
             onClick={() => setViewMode('list')}
@@ -269,7 +269,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             }`}
           >
             <List className="w-3.5 h-3.5" />
-            List View
+            {t('calendar.viewList')}
           </button>
         </div>
 
@@ -284,11 +284,11 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                   : 'bg-[#F1F3F5] text-slate-600 hover:bg-slate-200'
               }`}
             >
-              All Months
+              {t('calendar.allMonths')}
             </button>
-            {MONTH_SHORT.map((name, idx) => (
+            {Array.from({ length: 12 }, (_, idx) => (
               <button
-                key={name}
+                key={idx}
                 onClick={() => setListMonthFilter(listMonthFilter === idx + 1 ? 'all' : idx + 1)}
                 className={`px-3.5 py-1.5 rounded-full text-[11px] font-bold shrink-0 transition-all duration-150 active:scale-95 ${
                   listMonthFilter === idx + 1
@@ -296,24 +296,24 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                     : 'bg-[#F1F3F5] text-slate-600 hover:bg-slate-200'
                 }`}
               >
-                {name}
+                {monthNameShort(idx + 1)}
               </button>
             ))}
           </div>
         )}
       </div>
 
-      {/* LIST VIEW: months as English titles with their events below */}
+      {/* LIST VIEW: months as titles with their events below */}
       {viewMode === 'list' && (
         <div className="p-4 space-y-5 flex-1">
           {listMonthFilter === 'all' ? (
-            MONTH_NAMES.map((_, idx) => renderMonthSection(idx + 1))
+            Array.from({ length: 12 }, (_, idx) => renderMonthSection(idx + 1))
           ) : (
             <>
               {renderMonthSection(listMonthFilter)}
               {monthEvents(listMonthFilter).length === 0 && (
                 <p className="text-xs text-slate-400 text-center py-8">
-                  No Silo events scheduled for {MONTH_NAMES[listMonthFilter - 1]}.
+                  {t('calendar.noEventsForMonth', { month: monthName(listMonthFilter) })}
                 </p>
               )}
             </>
@@ -332,12 +332,12 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                 setSelectedDay(null);
               }}
               className="p-2 rounded-full bg-[#F1F3F5] text-slate-600 hover:bg-slate-200 transition active:scale-95"
-              aria-label="Previous month"
+              aria-label={t('calendar.prevMonth')}
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
             <h2 className="text-lg font-black text-[#181D20] tracking-tight">
-              {MONTH_NAMES[calMonth - 1]} {APP_YEAR}
+              {monthName(calMonth)} {APP_YEAR}
             </h2>
             <button
               onClick={() => {
@@ -345,7 +345,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                 setSelectedDay(null);
               }}
               className="p-2 rounded-full bg-[#F1F3F5] text-slate-600 hover:bg-slate-200 transition active:scale-95"
-              aria-label="Next month"
+              aria-label={t('calendar.nextMonth')}
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -353,9 +353,9 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 
           {/* Weekday Header */}
           <div className="grid grid-cols-7 gap-1">
-            {WEEKDAYS.map((d) => (
+            {[0, 1, 2, 3, 4, 5, 6].map((d) => (
               <div key={d} className="text-center text-[10px] font-extrabold text-slate-400 uppercase tracking-wider py-1">
-                {d}
+                {weekdayName(d)}
               </div>
             ))}
           </div>
@@ -407,13 +407,13 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           {/* Legend */}
           <div className="flex items-center gap-4 px-1 text-[10px] font-semibold text-slate-400">
             <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-[#3F76C5]" /> Event day
+              <span className="w-2 h-2 rounded-full bg-[#3F76C5]" /> {t('calendar.legendEvent')}
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-[#D13138]" /> Today
+              <span className="w-2 h-2 rounded-full bg-[#D13138]" /> {t('common.today')}
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-[#181D20]" /> Selected
+              <span className="w-2 h-2 rounded-full bg-[#181D20]" /> {t('calendar.legendSelected')}
             </span>
           </div>
 
@@ -422,7 +422,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             <div className="space-y-3.5">
               <div className="flex items-center gap-2">
                 <h3 className="text-sm font-black text-[#181D20]">
-                  {new Date(`${selectedDay}T00:00:00`).toLocaleDateString('en-ZA', {
+                  {new Date(`${selectedDay}T00:00:00`).toLocaleDateString(dateLocale, {
                     weekday: 'long',
                     day: 'numeric',
                     month: 'long',
@@ -432,27 +432,27 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                   onClick={() => setSelectedDay(null)}
                   className="text-[10px] font-bold text-[#3F76C5] hover:underline"
                 >
-                  Show whole month
+                  {t('calendar.showWholeMonth')}
                 </button>
               </div>
               {selectedDayEvents.length > 0 ? (
                 selectedDayEvents.map(renderEventCard)
               ) : (
                 <p className="text-xs text-slate-400 py-4 text-center">
-                  No events on this day.
+                  {t('calendar.noEventsDay')}
                 </p>
               )}
             </div>
           ) : (
             <div className="space-y-3.5">
               <h3 className="text-sm font-black text-[#181D20]">
-                {MONTH_NAMES[calMonth - 1]} Gatherings
+                {monthName(calMonth)} {t('calendar.gatherings')}
               </h3>
               {monthEvents(calMonth).length > 0 ? (
                 monthEvents(calMonth).map(renderEventCard)
               ) : (
                 <p className="text-xs text-slate-400 py-4 text-center">
-                  No Silo events scheduled for {MONTH_NAMES[calMonth - 1]}.
+                  {t('calendar.noEventsForMonth', { month: monthName(calMonth) })}
                 </p>
               )}
             </div>
@@ -466,7 +466,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           <div className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <span className="text-xs font-bold uppercase tracking-wider text-[#3F76C5]">
-                {activeCeremony.category} Ceremony
+                {activeCeremony.category} {t('calendar.ceremony')}
               </span>
               <button
                 onClick={() => setActiveCeremony(null)}
@@ -500,7 +500,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 
             <div className="mt-4">
               <h4 className="text-xs font-bold uppercase text-slate-400 tracking-wider">
-                About the Gathering
+                {t('calendar.about')}
               </h4>
               <p className="text-xs text-slate-700 mt-1 leading-relaxed">
                 {activeCeremony.description}
@@ -510,7 +510,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             <div className="mt-4 p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2.5">
               <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
               <div>
-                <p className="font-bold">Important Information:</p>
+                <p className="font-bold">{t('calendar.importantInfo')}</p>
                 <p className="mt-0.5 leading-relaxed">{activeCeremony.importantNotice}</p>
               </div>
             </div>
@@ -521,7 +521,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                   onClick={() => handleStartPreRegister(activeCeremony)}
                   className="flex-1 py-3 rounded-2xl bg-[#D13138] text-white font-bold text-sm shadow-md hover:bg-[#b8262d] transition"
                 >
-                  {activeCeremony.isRegistered ? 'Update Pre-Registration' : 'Pre-Register Now'}
+                  {activeCeremony.isRegistered ? t('calendar.updatePreReg') : t('calendar.preRegisterNow')}
                 </button>
               </div>
             )}
@@ -538,7 +538,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                   <div className="flex items-center gap-2">
                     <Users className="w-4 h-4 text-[#3F76C5]" />
-                    <h3 className="text-base font-bold text-slate-900">Pre-Registration</h3>
+                    <h3 className="text-base font-bold text-slate-900">{t('calendar.preRegistration')}</h3>
                   </div>
                   <button
                     onClick={() => setShowRegisterModal(false)}
@@ -553,14 +553,14 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                     {activeCeremony.title}
                   </p>
                   <p className="text-xs text-slate-500 mt-1">
-                    Select family members travelling with you to Silo. One pass covers all.
+                    {t('calendar.selectFamily')}
                   </p>
                 </div>
 
                 {/* Family Selection Checklist */}
                 <div className="mt-4 space-y-2">
                   <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                    Attendees List:
+                    {t('calendar.attendeesList')}
                   </p>
 
                   {/* Primary Member */}
@@ -571,10 +571,10 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                       </div>
                       <div>
                         <p className="text-xs font-bold text-slate-900">{member.name}</p>
-                        <p className="text-[10px] text-slate-500">Primary Member (Passholder)</p>
+                        <p className="text-[10px] text-slate-500">{t('calendar.primaryMember')}</p>
                       </div>
                     </div>
-                    <span className="text-[10px] font-bold text-[#3F76C5] uppercase">Required</span>
+                    <span className="text-[10px] font-bold text-[#3F76C5] uppercase">{t('calendar.required')}</span>
                   </div>
 
                   {/* Family Members from Profile */}
@@ -606,7 +606,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                           </div>
                         </div>
                         <span className="text-[11px] text-slate-400">
-                          {isChecked ? 'Included' : '+ Add'}
+                          {isChecked ? t('calendar.included') : `+ ${t('calendar.add')}`}
                         </span>
                       </div>
                     );
@@ -617,7 +617,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                 <form onSubmit={handleAddCustomFamily} className="mt-3 flex gap-2">
                   <input
                     type="text"
-                    placeholder="Add other family member name..."
+                    placeholder={t('calendar.addFamilyPh')}
                     value={customFamilyName}
                     onChange={(e) => setCustomFamilyName(e.target.value)}
                     className="flex-1 px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-[#3F76C5]"
@@ -627,7 +627,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                     className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold rounded-xl flex items-center gap-1"
                   >
                     <Plus className="w-3.5 h-3.5" />
-                    <span>Add</span>
+                    <span>{t('calendar.add')}</span>
                   </button>
                 </form>
 
@@ -637,7 +637,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                     onClick={handleConfirmPreRegister}
                     className="w-full py-3 rounded-2xl bg-[#D13138] text-white font-bold text-sm hover:bg-[#b8262d] transition shadow-md active:scale-98"
                   >
-                    Confirm Pre-Registration ({selectedFamily.length} Persons)
+                    {t('calendar.confirmPreReg', { count: selectedFamily.length })}
                   </button>
                 </div>
               </>
@@ -647,7 +647,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                 <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto mb-3 stroke-[2.2]" />
 
                 <h3 className="text-2xl font-black text-slate-900">
-                  Registered ✓
+                  {t('calendar.registered')} ✓
                 </h3>
                 <p className="text-xs font-semibold text-emerald-700 mt-1">
                   {activeCeremony.title}
@@ -655,15 +655,15 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 
                 <div className="mt-4 p-4 rounded-2xl bg-slate-50 border border-slate-200 text-left space-y-2 text-xs text-slate-700">
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Dates:</span>
+                    <span className="text-slate-500">{t('calendar.dates')}</span>
                     <span className="font-bold text-slate-900">{activeCeremony.dateRange}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-slate-500">Location:</span>
+                    <span className="text-slate-500">{t('calendar.location')}:</span>
                     <span className="font-bold text-slate-900">{activeCeremony.location}</span>
                   </div>
                   <div className="flex justify-between pt-1 border-t border-slate-200">
-                    <span className="text-slate-500">Registered Persons:</span>
+                    <span className="text-slate-500">{t('calendar.registeredPersons')}</span>
                     <span className="font-bold text-[#3F76C5]">
                       {selectedFamily.length} ({selectedFamily.join(', ')})
                     </span>
@@ -671,7 +671,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                 </div>
 
                 <p className="text-xs text-slate-500 mt-4 leading-relaxed">
-                  No ticket required. Simply show or scan your MMUSO membership card at Silo entry gates.
+                  {t('calendar.noTicketNote')}
                 </p>
 
                 <div className="mt-5 space-y-2">
@@ -683,7 +683,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                     }}
                     className="w-full py-3 rounded-2xl bg-[#3F76C5] text-white font-bold text-sm hover:bg-[#3262a4] transition shadow-md"
                   >
-                    View My Silo Pass / Card
+                    {t('calendar.viewPass')}
                   </button>
 
                   <button
@@ -693,7 +693,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                     }}
                     className="w-full py-2.5 rounded-xl bg-slate-100 text-slate-700 font-semibold text-xs hover:bg-slate-200"
                   >
-                    Back to Calendar
+                    {t('calendar.backToCalendar')}
                   </button>
                 </div>
               </div>

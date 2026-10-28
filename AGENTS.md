@@ -27,3 +27,11 @@ Guidance for AI agents and developers working in this repository. Read this befo
 - Member lists in the admin dashboard use the shared `src/components/admin/ViewControls.tsx` (search + list/cards toggle). Reuse it for any new roster UI.
 - The app is a PWA with `registerType: 'autoUpdate'` — clients reload automatically when a new deploy ships. Account for users hitting fresh deployments instantly.
 - Local dev: `npm run dev` runs the API on port 3001 and Vite on 3000 with `/api` proxied. Requires `.env` (see `.env.example`; never commit it).
+
+## UI translations (i18n)
+
+- All user-facing strings go through `src/data/i18n`: `const { t, locale, setLocale, dateLocale } = useTranslation()` from `src/data/i18n`, then `t('security.hello', { name })`. Components re-render automatically on locale change. A standalone `t()` export exists for module-level/helper use.
+- `locales/en.ts` is the typed source of truth and the runtime fallback: every new user-facing string needs an `en.ts` key first. Keep `{placeholder}` tokens identical across locales. Month/weekday names are NOT dictionary keys — use `new Intl.DateTimeFormat(dateLocale, …)`.
+- Active locales are English, Sesotho (`st`) and Setswana (`tn`). To add one: create `locales/<code>.ts` (`DeepPartial<Translation>`), then add it to `LOCALES` and `dictionaries` in `src/data/i18n/index.ts`. Never translate brand/church terms (IPHC, MMUSO, Kgotso, Karolo, Silo, FLG).
+- The picker lives in ProfileView's "Preferences" card. The choice persists to localStorage (`iphc-locale`) only — nothing server-side.
+- The security gate portal (`SecurityPortal.tsx`) uses the dedicated `security.*` namespace; its redesign uses the app palette (navy `#0A2A52`, blue `#3F76C5`, red `#D13138`, yellow accents) with a floating pill bottom nav.
