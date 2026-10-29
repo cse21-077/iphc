@@ -459,7 +459,6 @@ export default function App() {
                 <ProfileView
                   member={member}
                   onUpdateMember={setMember}
-                  onNavigateToPayments={() => openPaymentsFlow('karolo')}
                   onNavigateToAttendance={() => setIsAttendanceOpen(true)}
                   onOpenNotifications={() => setIsNotificationsOpen(true)}
                   onOpenCard={() => setIsMembershipPassOpen(true)}

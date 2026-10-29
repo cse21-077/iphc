@@ -707,7 +707,11 @@ app.get('/api/security/events', requireUser, requireSecurity, async (_request, r
   try {
     const now = new Date();
     const events = await prisma.events.findMany({
-      where: { is_published: true, archived_at: null, ends_at: { gte: now } },
+      where: {
+        is_published: true,
+        archived_at: null,
+        OR: [{ starts_at: { gte: now } }, { ends_at: { gte: now } }],
+      },
       include: { branches: true },
       orderBy: { starts_at: 'asc' },
       take: 50,
@@ -730,7 +734,11 @@ app.get('/api/events', requireUser, async (_request, response, next) => {
   try {
     const now = new Date();
     const events = await prisma.events.findMany({
-      where: { is_published: true, archived_at: null, ends_at: { gte: now } },
+      where: {
+        is_published: true,
+        archived_at: null,
+        OR: [{ starts_at: { gte: now } }, { ends_at: { gte: now } }],
+      },
       include: { branches: true },
       orderBy: { starts_at: 'asc' },
       take: 50,

@@ -29,7 +29,16 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({
   const [internalExpanded, setInternalExpanded] = useState(false);
   const [isFlipped, setIsFlipped] = useState(false);
   const [highBrightness, setHighBrightness] = useState(false);
+  const [photoFailed, setPhotoFailed] = useState(false);
   const { t } = useTranslation();
+
+  const initials = member.name
+    .split(' ')
+    .filter(Boolean)
+    .map((word) => word[0])
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
 
   const expanded = isExpanded || internalExpanded;
   const toggle = onToggleExpand || (() => setInternalExpanded((prev) => !prev));
@@ -73,12 +82,19 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({
           </div>
 
           <div className="shrink-0 flex flex-col items-center">
-            <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-white/70 shadow-md relative group-hover:scale-105 transition duration-200">
-              <img
-                src={member.photo}
-                alt={member.name}
-                className="w-full h-full object-cover"
-              />
+            <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-white/70 shadow-md relative group-hover:scale-105 transition duration-200 bg-white/20">
+              {member.photo && !photoFailed ? (
+                <img
+                  src={member.photo}
+                  alt={member.name}
+                  className="w-full h-full object-cover"
+                  onError={() => setPhotoFailed(true)}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-white font-black text-sm tracking-wide bg-[#3F76C5]">
+                  {initials}
+                </div>
+              )}
             </div>
           </div>
         </div>

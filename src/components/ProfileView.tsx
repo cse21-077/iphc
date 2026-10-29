@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { MemberProfile } from '../types';
 import { useTranslation, LOCALES, type Locale } from '../data/i18n';
 import {
-  CreditCard,
   Bell,
   Clock,
   Lock,
@@ -27,7 +26,6 @@ import {
 interface ProfileViewProps {
   member: MemberProfile;
   onUpdateMember: (updated: MemberProfile) => void;
-  onNavigateToPayments: () => void;
   onNavigateToAttendance: () => void;
   onOpenNotifications: () => void;
   onOpenCard: () => void;
@@ -38,7 +36,6 @@ interface ProfileViewProps {
 export const ProfileView: React.FC<ProfileViewProps> = ({
   member,
   onUpdateMember,
-  onNavigateToPayments,
   onNavigateToAttendance,
   onOpenNotifications,
   onOpenCard,
@@ -158,18 +155,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         </div>
       </div>
 
-      {/* Profile Quick Links Hub: Modern 3-Column Clean Grid */}
-      <div className="grid grid-cols-3 gap-2.5">
-        <button
-          id="profile-hub-payments"
-          onClick={onNavigateToPayments}
-          className="p-3.5 rounded-[22px] bg-white border border-slate-200/90 shadow-xs flex flex-col items-center text-center hover:border-slate-400 transition active:scale-95 group"
-        >
-          <CreditCard className="w-5 h-5 text-[#3F76C5] mb-1.5 group-hover:scale-110 transition" />
-          <span className="text-xs font-bold text-slate-900">{t('profile.hubPayments')}</span>
-          <span className="text-[10px] text-slate-400 mt-0.5 font-medium">{t('profile.hubPaymentsSub')}</span>
-        </button>
-
+      {/* Profile Quick Links Hub: Clean 2-Column Grid */}
+      <div className="grid grid-cols-2 gap-2.5">
         <button
           id="profile-hub-attendance"
           onClick={onNavigateToAttendance}

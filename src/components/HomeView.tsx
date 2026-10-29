@@ -107,7 +107,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
               <span>{t('home.kgotso')}</span>
             </div>
             <h1 className="text-xl font-black text-[#0A2A52] tracking-tight truncate">
-              {member.title} {member.name}
+              {member.name}
             </h1>
             <p className="text-xs text-[#3F76C5] font-semibold mt-0.5 truncate">
               {member.branch}

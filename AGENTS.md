@@ -11,9 +11,9 @@ Guidance for AI agents and developers working in this repository. Read this befo
 
 ## Vercel deployment rules (DO NOT BREAK)
 
-1. **Never delete the per-route stubs in `api/`.** Each file (`api/auth/me.ts`, `api/auth/login.ts`, `api/auth/forgot-password.ts`, `api/auth/reset-password.ts`) is a one-line re-export of `server/vercel-handler.js`. They exist because a catch-all-only deployment (`api/[...path].ts`) returns **404 for `/api/*` right after every deploy** while the function propagates — the per-route stubs are statically edge-mapped and are immune. This was a production incident (twice). `api/[...path].ts` remains as the catch-all for all other routes.
+1. **Never delete the per-route stubs in `api/`.** Each file (`api/auth/me.ts`, `api/auth/login.ts`, `api/auth/forgot-password.ts`, `api/auth/reset-password.ts`, `api/attendance/me.ts`, `api/events.ts`, `api/notices.ts`, `api/security/events.ts`) is a one-line re-export of `server/vercel-handler.js`. They exist because a catch-all-only deployment (`api/[...path].ts`) returns **404 for `/api/*` right after every deploy** while the function propagates — the per-route stubs are statically edge-mapped and are immune. This was a production incident (three times: auth, then security gate events, then member attendance/events/notices). `api/[...path].ts` remains as the catch-all for all other routes.
 
-2. **Hard limit: 12 serverless functions per deployment on the Vercel Hobby plan.** The project currently uses 5 (4 stubs + catch-all). Adding new API routes does **not** need new stubs — just add the route in `server/index.ts` and the catch-all serves it. Only add a stub for a business-critical route, and keep the total ≤ 11.
+2. **Hard limit: 12 serverless functions per deployment on the Vercel Hobby plan.** The project currently uses 9 (8 stubs + catch-all). Adding new API routes does **not** need new stubs — just add the route in `server/index.ts` and the catch-all serves it. Only add a stub for a business-critical route, and keep the total ≤ 11.
 
 3. **`vercel.json` must keep** `outputDirectory: dist`, the `api/**/*.ts` functions config, and `"postinstall": "prisma generate"` in `package.json` (pnpm blocks dependency build scripts, so without it the generated Prisma client is missing in some build stages).
 
