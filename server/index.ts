@@ -725,6 +725,52 @@ app.get('/api/security/events', requireUser, requireSecurity, async (_request, r
   }
 });
 
+// Member-facing published events (Silo calendar & home screen).
+app.get('/api/events', requireUser, async (_request, response, next) => {
+  try {
+    const now = new Date();
+    const events = await prisma.events.findMany({
+      where: { is_published: true, archived_at: null, ends_at: { gte: now } },
+      include: { branches: true },
+      orderBy: { starts_at: 'asc' },
+      take: 50,
+    });
+    return response.json(events.map((event) => ({
+      id: event.id,
+      title: event.title,
+      category: event.category,
+      description: event.description,
+      location: event.location,
+      imagePath: event.image_path,
+      startsAt: event.starts_at.toISOString(),
+      endsAt: event.ends_at?.toISOString() ?? null,
+      branch: event.branches?.name ?? null,
+    })));
+  } catch (error) {
+    return next(error);
+  }
+});
+
+// Church notices/announcements feed.
+app.get('/api/notices', requireUser, async (_request, response, next) => {
+  try {
+    const notices = await prisma.notices.findMany({
+      orderBy: { published_at: 'desc' },
+      take: 50,
+    });
+    return response.json(notices.map((notice) => ({
+      id: notice.id,
+      title: notice.title,
+      body: notice.body,
+      date: notice.published_at.toISOString(),
+      scope: notice.scope,
+      priority: notice.priority,
+    })));
+  } catch (error) {
+    return next(error);
+  }
+});
+
 app.post('/api/security/attendance', requireUser, requireSecurity, async (request, response, next) => {
   try {
     const eventId = String(request.body?.eventId ?? '');

@@ -1,706 +1,260 @@
-import React, { useState } from 'react';
-import { Ceremony, MemberProfile } from '../types';
+import React, { useEffect, useMemo, useState } from 'react';
+import { CalendarDays, ChevronLeft, ChevronRight, Clock3, IdCard, MapPin } from 'lucide-react';
+import { getEvents, MemberEvent } from '../api';
 import { useTranslation } from '../data/i18n';
-import {
-  Calendar as CalendarIcon,
-  MapPin,
-  Users,
-  CheckCircle2,
-  AlertCircle,
-  X,
-  ChevronLeft,
-  ChevronRight,
-  Sparkles,
-  Check,
-  Plus,
-  LayoutGrid,
-  List,
-} from 'lucide-react';
-import confetti from 'canvas-confetti';
 
 interface CalendarViewProps {
-  ceremonies: Ceremony[];
-  member: MemberProfile;
-  onPreRegister: (ceremonyId: string, familyMembers: string[]) => void;
   onOpenCard: () => void;
 }
 
-// The Silo annual program year (demo timeline)
-const APP_YEAR = 2026;
-const APP_TODAY = '2026-09-03';
+const CARD_TINTS = [
+  { bg: 'bg-[#EAF1FB]', icon: 'text-[#3F76C5]' },
+  { bg: 'bg-[#FFF3D1]', icon: 'text-[#B98600]' },
+  { bg: 'bg-[#FBE7E8]', icon: 'text-[#D13138]' },
+];
 
-const toISO = (month: number, day: number) =>
-  `${APP_YEAR}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-
-const daysInMonth = (month: number) => new Date(APP_YEAR, month, 0).getDate();
-
-const firstWeekdayIndex = (month: number) => {
-  const jsDay = new Date(APP_YEAR, month - 1, 1).getDay(); // 0 = Sunday
-  return (jsDay + 6) % 7; // convert to 0 = Monday
+const startOfDay = (date: Date) => {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  return d;
 };
 
-export const CalendarView: React.FC<CalendarViewProps> = ({
-  ceremonies,
-  member,
-  onPreRegister,
-  onOpenCard,
-}) => {
-  const [viewMode, setViewMode] = useState<'calendar' | 'list'>('list');
-  const [listMonthFilter, setListMonthFilter] = useState<number | 'all'>('all');
-  const [calMonth, setCalMonth] = useState(9); // September
-  const [selectedDay, setSelectedDay] = useState<string | null>(null);
+const dayKey = (date: Date) =>
+  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 
-  const [activeCeremony, setActiveCeremony] = useState<Ceremony | null>(null);
-  const [showRegisterModal, setShowRegisterModal] = useState(false);
-
-  // Pre-registration form state
-  const [selectedFamily, setSelectedFamily] = useState<string[]>([
-    member.name,
-    member.familyMembers[0]?.name || '',
-  ].filter(Boolean));
-  const [customFamilyName, setCustomFamilyName] = useState('');
-  const [isSuccessState, setIsSuccessState] = useState(false);
-
+export const CalendarView: React.FC<CalendarViewProps> = ({ onOpenCard }) => {
   const { t, dateLocale } = useTranslation();
+  const [events, setEvents] = useState<MemberEvent[]>([]);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [visibleMonth, setVisibleMonth] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
+  const [selectedDay, setSelectedDay] = useState(dayKey(new Date()));
 
-  const monthFormatter = new Intl.DateTimeFormat(dateLocale, { month: 'long' });
-  const monthShortFormatter = new Intl.DateTimeFormat(dateLocale, { month: 'short' });
-  const weekdayFormatter = new Intl.DateTimeFormat(dateLocale, { weekday: 'short' });
-  const monthName = (month: number) => monthFormatter.format(new Date(APP_YEAR, month - 1, 1));
-  const monthNameShort = (month: number) => monthShortFormatter.format(new Date(APP_YEAR, month - 1, 1));
-  // Week starts on Monday (South African convention); index 0 = Monday … 6 = Sunday
-  const weekdayName = (dayIndex: number) => weekdayFormatter.format(new Date(2024, 0, 1 + dayIndex)); // 2024-01-01 was a Monday
-
-  const monthOf = (c: Ceremony) =>
-    c.month ?? parseInt(c.startDate.split('-')[1], 10);
-
-  const eventsOnDay = (iso: string) =>
-    ceremonies.filter((c) => c.startDate <= iso && iso <= c.endDate);
-
-  const monthEvents = (month: number) =>
-    ceremonies
-      .filter((c) => monthOf(c) === month)
-      .sort((a, b) => a.startDate.localeCompare(b.startDate));
-
-  const handleOpenCeremony = (c: Ceremony) => {
-    setActiveCeremony(c);
-    setIsSuccessState(false);
-  };
-
-  const handleStartPreRegister = (c: Ceremony) => {
-    setActiveCeremony(c);
-    setSelectedFamily([
-      member.name,
-      ...(c.registeredFamilyMembers || [member.familyMembers[0]?.name].filter(Boolean)),
-    ]);
-    setShowRegisterModal(true);
-    setIsSuccessState(false);
-  };
-
-  const toggleFamilyMember = (name: string) => {
-    if (name === member.name) return; // Primary member always included
-    setSelectedFamily((prev) =>
-      prev.includes(name) ? prev.filter((n) => n !== name) : [...prev, name]
-    );
-  };
-
-  const handleAddCustomFamily = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!customFamilyName.trim()) return;
-    if (!selectedFamily.includes(customFamilyName.trim())) {
-      setSelectedFamily((prev) => [...prev, customFamilyName.trim()]);
-    }
-    setCustomFamilyName('');
-  };
-
-  const handleConfirmPreRegister = () => {
-    if (!activeCeremony) return;
-
-    onPreRegister(activeCeremony.id, selectedFamily);
-    setIsSuccessState(true);
-
-    try {
-      confetti({
-        particleCount: 60,
-        spread: 60,
-        origin: { y: 0.6 },
-        colors: ['#3F76C5', '#D13138', '#10B981'],
+  useEffect(() => {
+    let active = true;
+    getEvents()
+      .then((items) => {
+        if (active) setEvents(items);
+      })
+      .catch(() => {
+        if (active) setLoadFailed(true);
       });
-    } catch {
-      // safe fallback
-    }
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const eventsByDay = useMemo(() => {
+    const grouped = new Map<string, MemberEvent[]>();
+    events.forEach((event) => {
+      const start = startOfDay(new Date(event.startsAt));
+      const end = startOfDay(new Date(event.endsAt ?? event.startsAt));
+      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        const key = dayKey(new Date(d));
+        const list = grouped.get(key);
+        if (list) list.push(event);
+        else grouped.set(key, [event]);
+      }
+    });
+    return grouped;
+  }, [events]);
+
+  const monthFormatter = new Intl.DateTimeFormat(dateLocale, { month: 'long', year: 'numeric' });
+  const weekdayFormatter = new Intl.DateTimeFormat(dateLocale, { weekday: 'narrow' });
+  const dayFormatter = new Intl.DateTimeFormat(dateLocale, { weekday: 'short', day: 'numeric', month: 'short' });
+  const timeFormatter = new Intl.DateTimeFormat(dateLocale, { hour: '2-digit', minute: '2-digit' });
+
+  const year = visibleMonth.getFullYear();
+  const month = visibleMonth.getMonth();
+  const firstWeekday = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const todayKey = dayKey(new Date());
+
+  const calendarCells: Array<{ key: string; day: number; inMonth: boolean }> = [];
+  for (let i = 0; i < firstWeekday; i++) {
+    const d = new Date(year, month, -(firstWeekday - 1 - i));
+    calendarCells.push({ key: dayKey(d), day: d.getDate(), inMonth: false });
+  }
+  for (let d = 1; d <= daysInMonth; d++) {
+    calendarCells.push({ key: dayKey(new Date(year, month, d)), day: d, inMonth: true });
+  }
+  while (calendarCells.length % 7 !== 0) {
+    const next = new Date(year, month, daysInMonth + (calendarCells.length % 7));
+    calendarCells.push({ key: dayKey(next), day: next.getDate(), inMonth: false });
+  }
+
+  const weekdayLabels = Array.from({ length: 7 }, (_, i) =>
+    weekdayFormatter.format(new Date(2024, 0, 7 + i))
+  );
+
+  const shiftMonth = (delta: number) => {
+    setVisibleMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + delta, 1));
   };
 
-  const renderEventCard = (ceremony: Ceremony) => {
-    const primaryMap: Record<string, string> = {
-      Monthend: '/silo.jpg',
-      Sethephu: '/watch.jpg',
-      Annual: '/give.jpg',
-      Youth: '/youthandyoung.jpg',
-      Paseka: '/give.jpg',
-      Dikgaboi: '/silo.jpg',
-      Regional: '/silo.jpg',
-      Special: '/watch.jpg',
-    };
+  const selectedEvents = eventsByDay.get(selectedDay) ?? [];
+  const monthEventCount = Array.from(eventsByDay.keys()).filter((key) =>
+    key.startsWith(`${year}-${String(month + 1).padStart(2, '0')}`)
+  ).length;
 
-    const imageSrc =
-      primaryMap[ceremony.category] || ceremony.imageUrl ||
-      'https://images.unsplash.com/photo-1544427920-c49ccfb85579?w=800&auto=format&fit=crop&q=80';
-
-    const isPast = ceremony.endDate < APP_TODAY;
-
+  const renderEventCard = (event: MemberEvent, index: number) => {
+    const tint = CARD_TINTS[index % CARD_TINTS.length];
     return (
-      <div
-        key={ceremony.id}
-        onClick={() => handleOpenCeremony(ceremony)}
-        className="relative rounded-[26px] overflow-hidden shadow-xs border border-slate-100 h-[220px] flex flex-col justify-end p-3.5 group cursor-pointer"
-        style={{
-          backgroundImage: `url('${imageSrc}')`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-        }}
-      >
-        {/* Subtle gradient vignette */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent" />
-
-        {/* Category ribbon */}
-        <span className="absolute top-3.5 left-3.5 z-10 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-md border border-white/15 text-white text-[10px] font-extrabold uppercase tracking-wider">
-          {ceremony.category}
-        </span>
-        {isPast && (
-          <span className="absolute top-3.5 right-3.5 z-10 px-2.5 py-1 rounded-full bg-white/85 text-slate-600 text-[10px] font-extrabold uppercase tracking-wider">
-            {t('calendar.completed')}
+      <div key={`${event.id}-${index}`} className={`rounded-[24px] p-4 ${tint.bg}`}>
+        <div className="flex items-start justify-between gap-2">
+          <span className={`text-[9px] font-extrabold uppercase tracking-[0.14em] ${tint.icon}`}>
+            {event.category}
           </span>
-        )}
-
-        {/* Minimalist Floating Card Overlay */}
-        <div className="relative z-10 rounded-[20px] bg-slate-900/80 backdrop-blur-md border border-white/15 p-3.5 text-white shadow-lg flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <h3 className="text-sm font-black text-white leading-tight truncate">
-              {ceremony.title}
-            </h3>
-            <p className="text-[11px] text-slate-300 font-medium mt-0.5 truncate">
-              {ceremony.dateRange} • {ceremony.location.split(',')[0]}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            {ceremony.isRegistered ? (
-              <span className="text-[11px] font-bold text-emerald-300 px-2 py-1">
-                {t('calendar.registered')}
-              </span>
-            ) : ceremony.isPreRegistrationOpen && !isPast ? (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleStartPreRegister(ceremony);
-                }}
-                className="px-3.5 py-1.5 rounded-full bg-white text-[#181D20] text-xs font-bold hover:bg-slate-100 transition active:scale-95 shadow-xs"
-              >
-                {t('calendar.register')}
-              </button>
-            ) : null}
-          </div>
+          {event.branch && (
+            <span className="rounded-full bg-white/80 px-2 py-0.5 text-[9px] font-extrabold uppercase tracking-wider text-slate-500">
+              {event.branch}
+            </span>
+          )}
         </div>
+        <h4 className="mt-1.5 text-sm font-black leading-snug text-[#0A2A52]">{event.title}</h4>
+        <div className="mt-3 space-y-1.5 text-[11px] font-semibold text-slate-600">
+          <p className="flex items-center gap-1.5">
+            <Clock3 className={`h-3.5 w-3.5 shrink-0 ${tint.icon}`} />
+            {dayFormatter.format(new Date(event.startsAt))}
+            {' · '}
+            {timeFormatter.format(new Date(event.startsAt))}
+            {event.endsAt && ` – ${timeFormatter.format(new Date(event.endsAt))}`}
+          </p>
+          <p className="flex items-center gap-1.5">
+            <MapPin className={`h-3.5 w-3.5 shrink-0 ${tint.icon}`} />
+            <span className="truncate">{event.location}</span>
+          </p>
+        </div>
+        {event.description && (
+          <p className="mt-2.5 border-t border-white/60 pt-2 text-[11px] leading-relaxed text-slate-600">
+            {event.description}
+          </p>
+        )}
       </div>
     );
   };
-
-  const renderMonthSection = (month: number) => {
-    const events = monthEvents(month);
-    if (events.length === 0) return null;
-    return (
-      <section key={month}>
-        <div className="flex items-center gap-2.5 mb-2.5 mt-1">
-          <h2 className="text-base font-black text-[#181D20] tracking-tight">
-            {monthName(month)}
-          </h2>
-          <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[10px] font-extrabold">
-            {events.length === 1
-              ? t('calendar.eventCountOne', { count: events.length })
-              : t('calendar.eventCount', { count: events.length })}
-          </span>
-          <div className="flex-1 h-px bg-slate-100" />
-        </div>
-        <div className="space-y-3.5">
-          {events.map(renderEventCard)}
-        </div>
-      </section>
-    );
-  };
-
-  const calDays: Array<number | null> = [];
-  const lead = firstWeekdayIndex(calMonth);
-  for (let i = 0; i < lead; i++) calDays.push(null);
-  for (let d = 1; d <= daysInMonth(calMonth); d++) calDays.push(d);
-
-  const selectedDayEvents = selectedDay ? eventsOnDay(selectedDay) : [];
 
   return (
-    <div className="min-h-[calc(100vh-8rem)] flex flex-col pb-20 max-w-md mx-auto">
-      {/* Top Banner */}
-      <div className="p-4 bg-white border-b border-gray-100">
-        <h1 className="text-xl sm:text-2xl font-black text-[#181D20] tracking-tight">
-          {t('calendar.heading')}
-        </h1>
-        <p className="text-xs text-slate-400 font-normal mt-0.5">
-          {t('calendar.subheading')}
+    <div className="min-h-[calc(100vh-8rem)] pb-28 max-w-md mx-auto space-y-5 px-4 pt-3">
+      {/* Header */}
+      <div className="pt-2">
+        <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-[#3F76C5]">
+          {t('tabs.silo')}
         </p>
-
-        {/* View Toggle: Calendar vs List */}
-        <div className="flex mt-3.5 p-1 rounded-full bg-[#F1F3F5]">
-          <button
-            onClick={() => setViewMode('calendar')}
-            className={`flex-1 py-2 rounded-full text-xs font-bold flex items-center justify-center gap-1.5 transition-all duration-150 active:scale-95 ${
-              viewMode === 'calendar'
-                ? 'bg-[#181D20] text-white shadow-xs'
-                : 'text-slate-500 hover:text-slate-900'
-            }`}
-          >
-            <LayoutGrid className="w-3.5 h-3.5" />
-            {t('calendar.viewCalendar')}
-          </button>
-          <button
-            onClick={() => setViewMode('list')}
-            className={`flex-1 py-2 rounded-full text-xs font-bold flex items-center justify-center gap-1.5 transition-all duration-150 active:scale-95 ${
-              viewMode === 'list'
-                ? 'bg-[#181D20] text-white shadow-xs'
-                : 'text-slate-500 hover:text-slate-900'
-            }`}
-          >
-            <List className="w-3.5 h-3.5" />
-            {t('calendar.viewList')}
-          </button>
-        </div>
-
-        {/* Month Filter — List View only */}
-        {viewMode === 'list' && (
-          <div className="flex gap-2 mt-3 overflow-x-auto no-scrollbar pb-1">
-            <button
-              onClick={() => setListMonthFilter('all')}
-              className={`px-3.5 py-1.5 rounded-full text-[11px] font-bold shrink-0 transition-all duration-150 active:scale-95 ${
-                listMonthFilter === 'all'
-                  ? 'bg-[#3F76C5] text-white shadow-xs'
-                  : 'bg-[#F1F3F5] text-slate-600 hover:bg-slate-200'
-              }`}
-            >
-              {t('calendar.allMonths')}
-            </button>
-            {Array.from({ length: 12 }, (_, idx) => (
-              <button
-                key={idx}
-                onClick={() => setListMonthFilter(listMonthFilter === idx + 1 ? 'all' : idx + 1)}
-                className={`px-3.5 py-1.5 rounded-full text-[11px] font-bold shrink-0 transition-all duration-150 active:scale-95 ${
-                  listMonthFilter === idx + 1
-                    ? 'bg-[#3F76C5] text-white shadow-xs'
-                    : 'bg-[#F1F3F5] text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                {monthNameShort(idx + 1)}
-              </button>
-            ))}
-          </div>
-        )}
+        <h1 className="mt-1 text-2xl font-black tracking-tight text-[#0A2A52]">{t('calendar.heading')}</h1>
+        <p className="mt-1 text-xs font-medium text-slate-500">{t('calendar.subheading')}</p>
       </div>
 
-      {/* LIST VIEW: months as titles with their events below */}
-      {viewMode === 'list' && (
-        <div className="p-4 space-y-5 flex-1">
-          {listMonthFilter === 'all' ? (
-            Array.from({ length: 12 }, (_, idx) => renderMonthSection(idx + 1))
-          ) : (
-            <>
-              {renderMonthSection(listMonthFilter)}
-              {monthEvents(listMonthFilter).length === 0 && (
-                <p className="text-xs text-slate-400 text-center py-8">
-                  {t('calendar.noEventsForMonth', { month: monthName(listMonthFilter) })}
-                </p>
-              )}
-            </>
-          )}
-        </div>
-      )}
-
-      {/* CALENDAR VIEW: month grid with event days marked */}
-      {viewMode === 'calendar' && (
-        <div className="p-4 space-y-4 flex-1">
-          {/* Month Navigation */}
-          <div className="flex items-center justify-between">
+      {/* Month grid */}
+      <section className="rounded-[28px] bg-white p-4 shadow-[0_10px_30px_rgba(10,42,82,0.08)]">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-black text-[#0A2A52] capitalize">{monthFormatter.format(visibleMonth)}</h2>
+          <div className="flex items-center gap-1">
             <button
-              onClick={() => {
-                setCalMonth((m) => (m === 1 ? 12 : m - 1));
-                setSelectedDay(null);
-              }}
-              className="p-2 rounded-full bg-[#F1F3F5] text-slate-600 hover:bg-slate-200 transition active:scale-95"
+              type="button"
+              onClick={() => shiftMonth(-1)}
               aria-label={t('calendar.prevMonth')}
+              className="grid h-8 w-8 place-items-center rounded-full bg-slate-50 text-slate-500 transition hover:bg-slate-100 active:scale-95"
             >
-              <ChevronLeft className="w-4 h-4" />
+              <ChevronLeft className="h-4 w-4" />
             </button>
-            <h2 className="text-lg font-black text-[#181D20] tracking-tight">
-              {monthName(calMonth)} {APP_YEAR}
-            </h2>
             <button
-              onClick={() => {
-                setCalMonth((m) => (m === 12 ? 1 : m + 1));
-                setSelectedDay(null);
-              }}
-              className="p-2 rounded-full bg-[#F1F3F5] text-slate-600 hover:bg-slate-200 transition active:scale-95"
+              type="button"
+              onClick={() => shiftMonth(1)}
               aria-label={t('calendar.nextMonth')}
+              className="grid h-8 w-8 place-items-center rounded-full bg-slate-50 text-slate-500 transition hover:bg-slate-100 active:scale-95"
             >
-              <ChevronRight className="w-4 h-4" />
+              <ChevronRight className="h-4 w-4" />
             </button>
           </div>
-
-          {/* Weekday Header */}
-          <div className="grid grid-cols-7 gap-1">
-            {[0, 1, 2, 3, 4, 5, 6].map((d) => (
-              <div key={d} className="text-center text-[10px] font-extrabold text-slate-400 uppercase tracking-wider py-1">
-                {weekdayName(d)}
-              </div>
-            ))}
-          </div>
-
-          {/* Day Grid */}
-          <div className="grid grid-cols-7 gap-1">
-            {calDays.map((day, i) => {
-              if (day === null) return <div key={`blank-${i}`} />;
-              const iso = toISO(calMonth, day);
-              const dayEvents = eventsOnDay(iso);
-              const hasEvents = dayEvents.length > 0;
-              const isToday = iso === APP_TODAY;
-              const isSelected = iso === selectedDay;
-
-              return (
-                <button
-                  key={iso}
-                  disabled={!hasEvents}
-                  onClick={() => setSelectedDay(isSelected ? null : iso)}
-                  className={`relative aspect-square rounded-2xl flex flex-col items-center justify-center text-xs font-bold transition active:scale-95 ${
-                    isSelected
-                      ? 'bg-[#181D20] text-white shadow-md'
-                      : hasEvents
-                        ? 'bg-blue-50 text-[#3F76C5] hover:bg-blue-100'
-                        : isToday
-                          ? 'bg-slate-100 text-slate-900'
-                          : 'text-slate-400'
-                  }`}
-                >
-                  <span>{day}</span>
-                  {hasEvents && (
-                    <span className={`flex gap-0.5 mt-0.5 ${isSelected ? 'opacity-100' : ''}`}>
-                      {dayEvents.slice(0, 3).map((e) => (
-                        <span
-                          key={e.id}
-                          className={`w-1 h-1 rounded-full ${isSelected ? 'bg-white' : 'bg-[#3F76C5]'}`}
-                        />
-                      ))}
-                    </span>
-                  )}
-                  {isToday && !isSelected && (
-                    <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-[#D13138]" />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Legend */}
-          <div className="flex items-center gap-4 px-1 text-[10px] font-semibold text-slate-400">
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-[#3F76C5]" /> {t('calendar.legendEvent')}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-[#D13138]" /> {t('common.today')}
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-[#181D20]" /> {t('calendar.legendSelected')}
-            </span>
-          </div>
-
-          {/* Events below the grid: selected day first, otherwise the whole month */}
-          {selectedDay ? (
-            <div className="space-y-3.5">
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-black text-[#181D20]">
-                  {new Date(`${selectedDay}T00:00:00`).toLocaleDateString(dateLocale, {
-                    weekday: 'long',
-                    day: 'numeric',
-                    month: 'long',
-                  })}
-                </h3>
-                <button
-                  onClick={() => setSelectedDay(null)}
-                  className="text-[10px] font-bold text-[#3F76C5] hover:underline"
-                >
-                  {t('calendar.showWholeMonth')}
-                </button>
-              </div>
-              {selectedDayEvents.length > 0 ? (
-                selectedDayEvents.map(renderEventCard)
-              ) : (
-                <p className="text-xs text-slate-400 py-4 text-center">
-                  {t('calendar.noEventsDay')}
-                </p>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-3.5">
-              <h3 className="text-sm font-black text-[#181D20]">
-                {monthName(calMonth)} {t('calendar.gatherings')}
-              </h3>
-              {monthEvents(calMonth).length > 0 ? (
-                monthEvents(calMonth).map(renderEventCard)
-              ) : (
-                <p className="text-xs text-slate-400 py-4 text-center">
-                  {t('calendar.noEventsForMonth', { month: monthName(calMonth) })}
-                </p>
-              )}
-            </div>
-          )}
         </div>
-      )}
 
-      {/* Ceremony Details Modal */}
-      {activeCeremony && !showRegisterModal && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#3F76C5]">
-                {activeCeremony.category} {t('calendar.ceremony')}
-              </span>
+        <div className="mt-3 grid grid-cols-7 gap-1 text-center">
+          {weekdayLabels.map((label, i) => (
+            <span key={i} className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400">
+              {label}
+            </span>
+          ))}
+          {calendarCells.map((cell) => {
+            const hasEvents = eventsByDay.has(cell.key);
+            const isSelected = cell.key === selectedDay;
+            const isToday = cell.key === todayKey;
+            return (
               <button
-                onClick={() => setActiveCeremony(null)}
-                className="p-1 rounded-full text-slate-400 hover:text-slate-600"
+                key={cell.key}
+                type="button"
+                onClick={() => setSelectedDay(cell.key)}
+                className={`flex flex-col items-center rounded-xl py-1.5 transition active:scale-95 ${
+                  isSelected
+                    ? 'bg-[#0A2A52] text-white shadow-md'
+                    : isToday
+                      ? 'bg-[#EAF1FB] text-[#0A2A52]'
+                      : cell.inMonth
+                        ? 'text-slate-700 hover:bg-slate-50'
+                        : 'text-slate-300'
+                }`}
               >
-                <X className="w-5 h-5" />
+                <span className="text-xs font-bold">{cell.day}</span>
+                <span className={`mt-0.5 h-1.5 w-1.5 rounded-full ${hasEvents ? (isSelected ? 'bg-[#F5B301]' : 'bg-[#D13138]') : 'bg-transparent'}`} />
               </button>
-            </div>
+            );
+          })}
+        </div>
 
-            <div className="mt-3">
-              <h3 className="text-xl font-black text-slate-900 leading-snug">
-                {activeCeremony.title}
-              </h3>
-              {activeCeremony.sepediSubtitle && (
-                <p className="text-xs font-medium text-slate-500 mt-0.5 italic">
-                  {activeCeremony.sepediSubtitle}
-                </p>
-              )}
-            </div>
+        <div className="mt-3 flex items-center justify-between border-t border-slate-100 pt-3 text-[10px] font-bold text-slate-400">
+          <span className="flex items-center gap-1.5">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#D13138]" />
+            {t('calendar.legendEvent')}
+          </span>
+          <span>{monthEventCount ? t('calendar.eventCount', { count: monthEventCount }) : t('calendar.noEventsDay')}</span>
+        </div>
+      </section>
 
-            <div className="mt-4 p-3.5 rounded-2xl bg-slate-50 border border-slate-100 space-y-2 text-xs">
-              <div className="flex items-center gap-2 text-slate-800 font-bold">
-                <CalendarIcon className="w-4 h-4 text-[#3F76C5]" />
-                <span>{activeCeremony.dateRange}</span>
-              </div>
-              <div className="flex items-center gap-2 text-slate-600 font-medium">
-                <MapPin className="w-4 h-4 text-slate-400" />
-                <span>{activeCeremony.location}</span>
-              </div>
-            </div>
-
-            <div className="mt-4">
-              <h4 className="text-xs font-bold uppercase text-slate-400 tracking-wider">
-                {t('calendar.about')}
-              </h4>
-              <p className="text-xs text-slate-700 mt-1 leading-relaxed">
-                {activeCeremony.description}
-              </p>
-            </div>
-
-            <div className="mt-4 p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2.5">
-              <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-              <div>
-                <p className="font-bold">{t('calendar.importantInfo')}</p>
-                <p className="mt-0.5 leading-relaxed">{activeCeremony.importantNotice}</p>
-              </div>
-            </div>
-
-            {activeCeremony.isPreRegistrationOpen && activeCeremony.endDate >= APP_TODAY && (
-              <div className="mt-6 pt-4 border-t border-slate-100 flex gap-2">
-                <button
-                  onClick={() => handleStartPreRegister(activeCeremony)}
-                  className="flex-1 py-3 rounded-2xl bg-[#D13138] text-white font-bold text-sm shadow-md hover:bg-[#b8262d] transition"
-                >
-                  {activeCeremony.isRegistered ? t('calendar.updatePreReg') : t('calendar.preRegisterNow')}
-                </button>
-              </div>
+      {/* Selected day events */}
+      <section>
+        <h3 className="mb-3 text-base font-extrabold tracking-tight text-[#0A2A52]">
+          {dayFormatter.format(new Date(`${selectedDay}T12:00:00`))}
+        </h3>
+        {selectedEvents.length ? (
+          <div className="space-y-3">
+            {selectedEvents.map((event, index) => renderEventCard(event, index))}
+          </div>
+        ) : (
+          <div className="rounded-[24px] border border-dashed border-slate-300 bg-white/70 px-5 py-8 text-center">
+            <CalendarDays className="mx-auto h-7 w-7 text-slate-300" />
+            <p className="mt-2 text-xs font-extrabold text-slate-600">{t('calendar.noEventsDay')}</p>
+            {loadFailed && (
+              <p className="mt-1 text-[11px] font-medium text-slate-400">{t('common.errorGeneric')}</p>
             )}
           </div>
-        </div>
-      )}
+        )}
+      </section>
 
-      {/* Pre-Registration Modal (One simple action flow per PRD Principle 2) */}
-      {showRegisterModal && activeCeremony && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
-            {!isSuccessState ? (
-              <>
-                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                  <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-[#3F76C5]" />
-                    <h3 className="text-base font-bold text-slate-900">{t('calendar.preRegistration')}</h3>
-                  </div>
-                  <button
-                    onClick={() => setShowRegisterModal(false)}
-                    className="p-1 rounded-full text-slate-400 hover:text-slate-600"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-
-                <div className="mt-3">
-                  <p className="text-xs font-semibold text-[#D13138] uppercase">
-                    {activeCeremony.title}
-                  </p>
-                  <p className="text-xs text-slate-500 mt-1">
-                    {t('calendar.selectFamily')}
-                  </p>
-                </div>
-
-                {/* Family Selection Checklist */}
-                <div className="mt-4 space-y-2">
-                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                    {t('calendar.attendeesList')}
-                  </p>
-
-                  {/* Primary Member */}
-                  <div className="flex items-center justify-between p-3 rounded-2xl bg-blue-50/80 border border-blue-100">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-7 h-7 rounded-full bg-[#3F76C5] text-white flex items-center justify-center text-xs font-bold">
-                        ✓
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-slate-900">{member.name}</p>
-                        <p className="text-[10px] text-slate-500">{t('calendar.primaryMember')}</p>
-                      </div>
-                    </div>
-                    <span className="text-[10px] font-bold text-[#3F76C5] uppercase">{t('calendar.required')}</span>
-                  </div>
-
-                  {/* Family Members from Profile */}
-                  {member.familyMembers.map((fam) => {
-                    const isChecked = selectedFamily.includes(fam.name);
-                    return (
-                      <div
-                        key={fam.id}
-                        onClick={() => toggleFamilyMember(fam.name)}
-                        className={`flex items-center justify-between p-3 rounded-2xl border transition cursor-pointer ${
-                          isChecked
-                            ? 'bg-emerald-50/80 border-emerald-200 text-slate-900'
-                            : 'bg-slate-50 border-slate-200/70 text-slate-600 hover:bg-slate-100'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2.5">
-                          <div
-                            className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition ${
-                              isChecked
-                                ? 'bg-emerald-600 text-white'
-                                : 'border-2 border-slate-300 bg-white text-transparent'
-                            }`}
-                          >
-                            ✓
-                          </div>
-                          <div>
-                            <p className="text-xs font-semibold">{fam.name}</p>
-                            <p className="text-[10px] text-slate-500">{fam.relation}</p>
-                          </div>
-                        </div>
-                        <span className="text-[11px] text-slate-400">
-                          {isChecked ? t('calendar.included') : `+ ${t('calendar.add')}`}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Optional Custom Family Member Input */}
-                <form onSubmit={handleAddCustomFamily} className="mt-3 flex gap-2">
-                  <input
-                    type="text"
-                    placeholder={t('calendar.addFamilyPh')}
-                    value={customFamilyName}
-                    onChange={(e) => setCustomFamilyName(e.target.value)}
-                    className="flex-1 px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-[#3F76C5]"
-                  />
-                  <button
-                    type="submit"
-                    className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-semibold rounded-xl flex items-center gap-1"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>{t('calendar.add')}</span>
-                  </button>
-                </form>
-
-                {/* Confirm Pre-Registration Action */}
-                <div className="mt-6 pt-3 border-t border-slate-100">
-                  <button
-                    onClick={handleConfirmPreRegister}
-                    className="w-full py-3 rounded-2xl bg-[#D13138] text-white font-bold text-sm hover:bg-[#b8262d] transition shadow-md active:scale-98"
-                  >
-                    {t('calendar.confirmPreReg', { count: selectedFamily.length })}
-                  </button>
-                </div>
-              </>
-            ) : (
-              /* Big Unambiguous Registration Confirmation */
-              <div className="py-4 text-center animate-in zoom-in-95 duration-200">
-                <CheckCircle2 className="w-12 h-12 text-emerald-600 mx-auto mb-3 stroke-[2.2]" />
-
-                <h3 className="text-2xl font-black text-slate-900">
-                  {t('calendar.registered')} ✓
-                </h3>
-                <p className="text-xs font-semibold text-emerald-700 mt-1">
-                  {activeCeremony.title}
-                </p>
-
-                <div className="mt-4 p-4 rounded-2xl bg-slate-50 border border-slate-200 text-left space-y-2 text-xs text-slate-700">
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">{t('calendar.dates')}</span>
-                    <span className="font-bold text-slate-900">{activeCeremony.dateRange}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">{t('calendar.location')}:</span>
-                    <span className="font-bold text-slate-900">{activeCeremony.location}</span>
-                  </div>
-                  <div className="flex justify-between pt-1 border-t border-slate-200">
-                    <span className="text-slate-500">{t('calendar.registeredPersons')}</span>
-                    <span className="font-bold text-[#3F76C5]">
-                      {selectedFamily.length} ({selectedFamily.join(', ')})
-                    </span>
-                  </div>
-                </div>
-
-                <p className="text-xs text-slate-500 mt-4 leading-relaxed">
-                  {t('calendar.noTicketNote')}
-                </p>
-
-                <div className="mt-5 space-y-2">
-                  <button
-                    onClick={() => {
-                      setShowRegisterModal(false);
-                      setActiveCeremony(null);
-                      onOpenCard();
-                    }}
-                    className="w-full py-3 rounded-2xl bg-[#3F76C5] text-white font-bold text-sm hover:bg-[#3262a4] transition shadow-md"
-                  >
-                    {t('calendar.viewPass')}
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setShowRegisterModal(false);
-                      setActiveCeremony(null);
-                    }}
-                    className="w-full py-2.5 rounded-xl bg-slate-100 text-slate-700 font-semibold text-xs hover:bg-slate-200"
-                  >
-                    {t('calendar.backToCalendar')}
-                  </button>
-                </div>
-              </div>
-            )}
+      {/* All upcoming gatherings */}
+      {events.length > 0 && (
+        <section>
+          <div className="mb-3 flex items-center justify-between px-0.5">
+            <h3 className="text-base font-extrabold tracking-tight text-[#0A2A52]">{t('calendar.gatherings')}</h3>
+            <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">
+              {events.length === 1 ? t('calendar.eventCountOne', { count: events.length }) : t('calendar.eventCount', { count: events.length })}
+            </span>
           </div>
-        </div>
+          <div className="space-y-3">
+            {events.map((event, index) => renderEventCard(event, index))}
+          </div>
+        </section>
       )}
+
+      {/* Membership pass shortcut */}
+      <button
+        type="button"
+        onClick={onOpenCard}
+        className="flex w-full items-center justify-center gap-2 rounded-[24px] bg-gradient-to-r from-[#0A2A52] to-[#164A86] px-4 py-4 text-sm font-extrabold text-white transition active:scale-[0.98]"
+      >
+        <IdCard className="h-4 w-4" />
+        {t('calendar.viewPass')}
+      </button>
     </div>
   );
 };

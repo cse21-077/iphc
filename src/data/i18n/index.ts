@@ -15,9 +15,9 @@ import st from './locales/st';
 import tn from './locales/tn';
 
 export const LOCALES = [
-	{ code: 'en', label: 'English' },
-	{ code: 'st', label: 'Sesotho' },
-	{ code: 'tn', label: 'Setswana' }
+	{ code: 'en', label: 'English', flag: '🇬🇧' },
+	{ code: 'st', label: 'Sesotho', flag: '🇱🇸' },
+	{ code: 'tn', label: 'Setswana', flag: '🇧🇼' }
 ] as const;
 
 export type Locale = (typeof LOCALES)[number]['code'];

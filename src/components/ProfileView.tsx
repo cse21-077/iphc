@@ -21,7 +21,6 @@ import {
   LogOut,
   UserPlus,
   UserRound,
-  Globe,
   Check,
 } from 'lucide-react';
 
@@ -422,8 +421,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           aria-label={t('settings.language')}
           className="w-full flex items-center justify-between gap-3 rounded-2xl p-3 hover:bg-slate-50 transition active:scale-98"
         >
-          <div className="w-10 h-10 rounded-xl bg-[#EAF1FB] flex items-center justify-center shrink-0">
-            <Globe className="w-5 h-5 text-[#3F76C5]" />
+          <div className="w-10 h-10 rounded-full bg-slate-50 ring-1 ring-slate-100 flex items-center justify-center text-xl shrink-0">
+            {LOCALES.find((l) => l.code === locale)?.flag}
           </div>
           <div className="flex-1 min-w-0 text-left">
             <p className="text-xs font-bold text-slate-900">{t('settings.language')}</p>
@@ -556,12 +555,17 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   key={l.code}
                   onClick={() => handleSelectLocale(l.code)}
                   aria-label={l.label}
-                  className={`w-full flex items-center justify-between rounded-2xl px-4 py-3.5 transition hover:bg-slate-50 ${
-                    locale === l.code ? 'bg-[#EAF1FB]/60' : ''
+                  className={`w-full flex items-center justify-between rounded-2xl px-4 py-3 transition active:scale-[0.99] ${
+                    locale === l.code ? 'bg-slate-50 ring-1 ring-slate-200' : 'hover:bg-slate-50'
                   }`}
                 >
-                  <span className="text-sm font-bold text-slate-900">{l.label}</span>
-                  {locale === l.code && <Check className="w-4 h-4 text-[#3F76C5]" />}
+                  <span className="flex items-center gap-3">
+                    <span className="grid h-9 w-9 place-items-center rounded-full bg-white text-xl shadow-xs ring-1 ring-slate-100">
+                      {l.flag}
+                    </span>
+                    <span className="text-sm font-bold text-slate-900">{l.label}</span>
+                  </span>
+                  {locale === l.code && <Check className="w-4 h-4 text-[#0A2A52]" />}
                 </button>
               ))}
             </div>

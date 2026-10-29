@@ -100,6 +100,7 @@ model branches {
   branch_membership_counters branch_membership_counters?
   events                     events[]
   members                    members[]
+  notices                    notices[]
 }
 
 model events {
@@ -121,6 +122,21 @@ model events {
   branches     branches?    @relation(fields: [branch_id], references: [id])
 
   @@index([starts_at, is_published])
+}
+
+model notices {
+  id           String    @id @db.Uuid
+  title        String
+  body         String    @default("")
+  scope        String    @default("Church-wide")
+  priority     String    @default("normal")
+  branch_id    String?   @db.Uuid
+  published_at DateTime  @default(now()) @db.Timestamptz(6)
+  created_by   String?   @db.Uuid
+  created_at   DateTime  @default(now()) @db.Timestamptz(6)
+  branches     branches? @relation(fields: [branch_id], references: [id])
+
+  @@index([published_at(sort: Desc)])
 }
 
 model member_relationships {

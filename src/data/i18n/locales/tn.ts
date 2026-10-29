@@ -84,7 +84,10 @@ const tn: DeepPartial<Translation> = {
 		tapToRegister: 'Tobetsa go ikwadisa',
 		give: 'Abela',
 		giveSub: 'Karolo, Polokano & tse dingwe',
-		dailyReflection: 'Tlhokomelano ya Motlha ya Mangwalo a Kgalalelo'
+		dailyReflection: 'Tlhokomelano ya Motlha ya Mangwalo a Kgalalelo',
+		events: 'Ditiragalo',
+		upcomingEvents: 'Ditiragalo tse di Tlang',
+		noEvents: 'Ga go na ditiragalo tse di rulagantsweng.'
 	},
 	auth: {
 		stepOf: 'Kgato ya {step} ya {total}',
@@ -303,7 +306,7 @@ const tn: DeepPartial<Translation> = {
 		identity: 'Boitshupo jwa Motlha',
 		statusActive: 'Leloko le le Dirang',
 		statusPending: 'E Letla Tumelelo',
-		memberName: 'Leina la Leloko',
+		memberName: 'Leina',
 		membershipNo: 'Nomoro ya Boleloko',
 		branch: 'Kereke',
 		section: 'Sehlopha',
@@ -315,7 +318,7 @@ const tn: DeepPartial<Translation> = {
 		pendingBranchApproval: 'E Letla Tumelelo ya Kereke',
 		viewPendingStatus: 'Leba Maemo a a Letang →',
 		tapForScanner: 'Tobetsa ka Sekena →',
-		memberPass: 'Karata ya Leloko ya Motlha ya IPHC',
+		memberPass: 'Karata ya Motlha ya IPHC',
 		toggleBrightness: 'Fetola Kontraste e Kgolo ya Sekerini ya Sekena sa Mothusi',
 		flipCard: 'Fetola Karata (Tlhaku / Morago)',
 		registrationVerification: 'Tlhomamiso ya Kwadiso e a Lela',

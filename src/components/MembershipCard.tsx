@@ -183,19 +183,10 @@ export const MembershipCard: React.FC<MembershipCardProps> = ({
                   </div>
                 </div>
 
-                {/* Simulated Barcode at bottom */}
+                {/* Real membership number footer (no fake barcode graphics) */}
                 <div className="mt-4 pt-3 border-t border-slate-700/20">
-                  <div className="flex justify-center items-end gap-[3px] h-9 mx-auto w-48 opacity-75">
-                    {[3, 1, 2, 4, 1, 3, 2, 1, 4, 2, 1, 3, 4, 1, 2, 3, 1, 4, 2, 1, 3, 2, 4, 1, 2].map((w, i) => (
-                      <div
-                        key={i}
-                        className={`h-full ${highBrightness ? 'bg-slate-900' : 'bg-slate-300'}`}
-                        style={{ width: `${w * 2}px` }}
-                      />
-                    ))}
-                  </div>
-                  <p className="text-[10px] text-slate-400 font-mono mt-1">
-                    ZB-SILO-{member.membershipNumber.replace('IPHC-MM-', '')}-2026
+                  <p className={`text-center text-[11px] font-mono font-bold tracking-[0.22em] ${highBrightness ? 'text-slate-500' : 'text-slate-400'}`}>
+                    {member.membershipNumber}
                   </p>
                 </div>
               </div>

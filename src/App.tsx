@@ -1,16 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   MemberProfile,
-  Ceremony,
   AttendanceRecord,
   PaymentRecord,
   AnnouncementNotification,
 } from './types';
 import {
   initialMemberProfile,
-  initialCeremonies,
   initialPaymentRecords,
-  initialNotifications,
 } from './data/initialData';
 import { BottomNav } from './components/BottomNav';
 import { HomeView } from './components/HomeView';
@@ -28,8 +25,10 @@ import { SecurityPortal } from './components/SecurityPortal';
 import PWAInstallOverlay from './components/PWAInstallOverlay';
 import { AdminDashboard } from './components/admin/AdminDashboard';
 import {
+  ChurchNotice,
   getCurrentUser,
   getMemberAttendance,
+  getNotices,
   login,
   logout,
   MemberAttendance,
@@ -52,6 +51,8 @@ const attendanceRecordFromApi = (record: MemberAttendance): AttendanceRecord => 
     verificationCode: `ATT-${record.attendanceId.slice(0, 8).toUpperCase()}`,
   };
 };
+
+const SEEN_NOTICES_KEY = 'iphc_mmuso_seen_notices';
 
 export default function App() {
   // Admin route: /admin (path) or #/admin (hash) renders the leadership dashboard
@@ -102,11 +103,6 @@ export default function App() {
   // Persistent Domain States with LocalStorage backup
   const [member, setMember] = useState<MemberProfile>(initialMemberProfile);
 
-  const [ceremonies, setCeremonies] = useState<Ceremony[]>(() => {
-    const saved = localStorage.getItem('iphc_mmuso_ceremonies');
-    return saved ? JSON.parse(saved) : initialCeremonies;
-  });
-
   // Attendance history always comes from the member API — never from seeded
   // or cached data — so the screen reflects the real attendance records.
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>([]);
@@ -117,9 +113,15 @@ export default function App() {
     return saved ? JSON.parse(saved) : initialPaymentRecords;
   });
 
-  const [notifications, setNotifications] = useState<AnnouncementNotification[]>(() => {
-    const saved = localStorage.getItem('iphc_mmuso_notifications');
-    return saved ? JSON.parse(saved) : initialNotifications;
+  // Real church notices from the server. Read state is tracked per device so
+  // the home bell badge and modal stay honest without any server writes.
+  const [notices, setNotices] = useState<ChurchNotice[]>([]);
+  const [seenNotices, setSeenNotices] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem(SEEN_NOTICES_KEY) ?? '[]');
+    } catch {
+      return [];
+    }
   });
 
   const loadMemberAttendance = useCallback(async () => {
@@ -204,16 +206,31 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('iphc_mmuso_ceremonies', JSON.stringify(ceremonies));
-  }, [ceremonies]);
-
-  useEffect(() => {
     localStorage.setItem('iphc_mmuso_payments', JSON.stringify(paymentRecords));
   }, [paymentRecords]);
 
   useEffect(() => {
-    localStorage.setItem('iphc_mmuso_notifications', JSON.stringify(notifications));
-  }, [notifications]);
+    localStorage.setItem(SEEN_NOTICES_KEY, JSON.stringify(seenNotices));
+  }, [seenNotices]);
+
+  // Poll real notices while a member session is active so the home badge
+  // and the modal reflect what branch administration has published.
+  useEffect(() => {
+    if (!hasSession || securityProfile) return;
+    let active = true;
+    const loadNotices = () =>
+      getNotices()
+        .then((items) => {
+          if (active) setNotices(items);
+        })
+        .catch(() => undefined);
+    loadNotices();
+    const interval = window.setInterval(loadNotices, 60000);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
+  }, [hasSession, securityProfile]);
 
   // Auth Handlers
   const handleLoginWithEmail = async (inputEmail: string, password: string) => {
@@ -280,22 +297,18 @@ export default function App() {
     setPaymentRecords((prev) => [newRecord, ...prev]);
   };
 
-  const handlePreRegisterCeremony = (ceremonyId: string, familyMembers: string[]) => {
-    setCeremonies((prev) =>
-      prev.map((c) =>
-        c.id === ceremonyId
-          ? {
-              ...c,
-              isRegistered: true,
-              registeredFamilyMembers: familyMembers,
-            }
-          : c
-      )
-    );
-  };
+  const notifications: AnnouncementNotification[] = notices.map((notice) => ({
+    id: notice.id,
+    title: notice.title,
+    body: notice.body,
+    date: new Date(notice.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }),
+    isRead: seenNotices.includes(notice.id),
+    scope: notice.scope === 'Branch' || notice.scope === 'Ceremony' ? notice.scope : 'Church-wide',
+    priority: notice.priority === 'urgent' ? 'urgent' : 'normal',
+  }));
 
   const handleMarkAllNotificationsRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    setSeenNotices((prev) => Array.from(new Set([...prev, ...notices.map((notice) => notice.id)])));
   };
 
   const navigateToTab = (tab: 'home' | 'calendar' | 'scan' | 'flg' | 'profile') => {
@@ -413,25 +426,18 @@ export default function App() {
               {activeTab === 'home' && (
                 <HomeView
                   member={member}
-                  upcomingCeremony={
-                    ceremonies.find((c) => c.startDate >= '2026-09-03') ?? ceremonies[ceremonies.length - 1]
-                  }
-                  announcements={notifications}
-                  attendanceCount={attendanceRecords.length}
+                  hasUnseenNotices={notifications.some((n) => !n.isRead)}
                   onNavigateTab={navigateToTab}
-                  onOpenPayments={openPaymentsFlow}
+                  onOpenEvents={() => navigateToTab('calendar')}
+                  onOpenAttendance={() => setIsAttendanceOpen(true)}
                   onOpenMedia={() => setIsMediaOpen(true)}
                   onOpenNotifications={() => setIsNotificationsOpen(true)}
-                  onOpenCeremonyRegistration={() => navigateToTab('calendar')}
                   onOpenMembershipPass={() => setIsMembershipPassOpen(true)}
                 />
               )}
 
               {activeTab === 'calendar' && (
                 <CalendarView
-                  ceremonies={ceremonies}
-                  member={member}
-                  onPreRegister={handlePreRegisterCeremony}
                   onOpenCard={() => setIsMembershipPassOpen(true)}
                 />
               )}

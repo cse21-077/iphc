@@ -55,6 +55,13 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
 
         {/* Notifications Feed */}
         <div className="mt-4 space-y-3 overflow-y-auto flex-1 pr-1">
+          {notifications.length === 0 && (
+            <div className="rounded-[22px] border border-dashed border-slate-300 bg-slate-50/60 px-5 py-10 text-center">
+              <Bell className="mx-auto h-7 w-7 text-slate-300" />
+              <p className="mt-2 text-xs font-extrabold text-slate-600">{t('notifications.empty')}</p>
+              <p className="mt-1 text-[11px] font-medium text-slate-400">{t('notifications.emptySub')}</p>
+            </div>
+          )}
           {notifications.map((n) => {
             const isImportant = n.priority === 'urgent' || n.scope === 'Church-wide';
             return (

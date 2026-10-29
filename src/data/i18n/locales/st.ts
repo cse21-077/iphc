@@ -84,7 +84,10 @@ const st: DeepPartial<Translation> = {
 		tapToRegister: 'Tlanya ho ngodisa',
 		give: 'Fana',
 		giveSub: 'Karolo, Polokano & tse ding',
-		dailyReflection: 'Nahano ya ka Letsatsi ya Mangolo'
+		dailyReflection: 'Nahano ya ka Letsatsi ya Mangolo',
+		events: 'Ditiragalo',
+		upcomingEvents: 'Ditiragalo tse tlang',
+		noEvents: 'Ha ho na ditiragalo tse hahellwe.'
 	},
 	auth: {
 		stepOf: 'Kgato ya {step} ya {total}',
@@ -303,7 +306,7 @@ const st: DeepPartial<Translation> = {
 		identity: 'Boitsebiso ba Didijithale',
 		statusActive: 'Mohlanki ya Fumanehang',
 		statusPending: 'E lebeletse Tumelelo',
-		memberName: 'Lebitso la Mohlanki',
+		memberName: 'Lebitso',
 		membershipNo: 'Nomoro ya Boikgokahane',
 		branch: 'Lekgotla',
 		section: 'Karolo',
@@ -315,7 +318,7 @@ const st: DeepPartial<Translation> = {
 		pendingBranchApproval: 'E lebeletse Tumelelo ya Lekgotla',
 		viewPendingStatus: 'Bona Boemo ba ho Lembelwa →',
 		tapForScanner: 'Tlanya bakeng sa Skena →',
-		memberPass: 'Pase ya Mohlanki ya Didijithale ya IPHC',
+		memberPass: 'Pase ya Didijithale ya IPHC',
 		toggleBrightness: 'Fetola Kgahlego ya Skrini ya Mothusi',
 		flipCard: 'Fetola Karete (Kapele / Morao)',
 		registrationVerification: 'Netefatso ya Ngodiso e lebeletswe',

@@ -97,7 +97,10 @@ export const home = {
 	tapToRegister: 'Tap to register',
 	give: 'Give',
 	giveSub: 'Karolo, Polokano & more',
-	dailyReflection: 'Daily Scripture Reflection'
+	dailyReflection: 'Daily Scripture Reflection',
+	events: 'Events',
+	upcomingEvents: 'Upcoming events',
+	noEvents: 'No events scheduled yet.'
 } as const;
 
 export const auth = {
@@ -322,7 +325,7 @@ export const card = {
 	identity: 'Digital Identity',
 	statusActive: 'Active Member',
 	statusPending: 'Pending Approval',
-	memberName: 'Member Name',
+	memberName: 'Name',
 	membershipNo: 'Membership Number',
 	branch: 'Branch',
 	section: 'Section',
@@ -334,7 +337,7 @@ export const card = {
 	pendingBranchApproval: 'Pending Branch Approval',
 	viewPendingStatus: 'View Pending Status →',
 	tapForScanner: 'Tap for Scanner →',
-	memberPass: 'IPHC Digital Member Pass',
+	memberPass: 'IPHC Digital Pass',
 	toggleBrightness: 'Toggle Maximum Screen Contrast for Usher Scanner',
 	flipCard: 'Flip Card (Front / Back)',
 	registrationVerification: 'Registration Verification Pending',

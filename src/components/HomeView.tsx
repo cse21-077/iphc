@@ -1,50 +1,67 @@
-import React, { useState } from 'react';
-import {
-  MemberProfile,
-  Ceremony,
-  AnnouncementNotification,
-} from '../types';
+import React, { useEffect, useState } from 'react';
 import {
   ArrowRight,
+  ArrowUpRight,
   Bell,
   BookOpen,
-  Sun,
+  Clock3,
+  MapPin,
   QrCode,
-  ArrowUpRight,
-  Bookmark,
+  Sun,
+  UserRound,
 } from 'lucide-react';
+import { MemberProfile } from '../types';
+import { getEvents, MemberEvent } from '../api';
 import { useTranslation } from '../data/i18n';
 
 interface HomeViewProps {
   member: MemberProfile;
-  upcomingCeremony: Ceremony;
-  announcements: AnnouncementNotification[];
-  attendanceCount: number;
+  hasUnseenNotices: boolean;
   onNavigateTab: (tab: 'home' | 'calendar' | 'scan' | 'flg' | 'profile') => void;
-  onOpenPayments: (categoryId?: string) => void;
+  onOpenEvents: () => void;
+  onOpenAttendance: () => void;
   onOpenMedia: () => void;
   onOpenNotifications: () => void;
-  onOpenCeremonyRegistration: (ceremony: Ceremony) => void;
   onOpenMembershipPass: () => void;
 }
 
+const CARD_TINTS = [
+  { bg: 'bg-[#EAF1FB]', icon: 'text-[#3F76C5]' },
+  { bg: 'bg-[#FFF3D1]', icon: 'text-[#B98600]' },
+  { bg: 'bg-[#FBE7E8]', icon: 'text-[#D13138]' },
+];
+
 export const HomeView: React.FC<HomeViewProps> = ({
   member,
-  upcomingCeremony,
-  announcements,
-  attendanceCount,
+  hasUnseenNotices,
   onNavigateTab,
-  onOpenPayments,
+  onOpenEvents,
+  onOpenAttendance,
   onOpenMedia,
   onOpenNotifications,
-  onOpenCeremonyRegistration,
   onOpenMembershipPass,
 }) => {
-  const [savedItems, setSavedItems] = useState<Record<string, boolean>>({
-    silo: true,
-  });
+  const { t, dateLocale } = useTranslation();
+  const [events, setEvents] = useState<MemberEvent[]>([]);
+  const [eventsFailed, setEventsFailed] = useState(false);
   const [photoFailed, setPhotoFailed] = useState(false);
-  const { t } = useTranslation();
+
+  useEffect(() => setPhotoFailed(false), [member.photo]);
+
+  useEffect(() => {
+    let active = true;
+    getEvents()
+      .then((items) => {
+        if (active) setEvents(items);
+      })
+      .catch(() => {
+        if (active) setEventsFailed(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const initials = member.name
     .split(' ')
     .filter(Boolean)
@@ -53,26 +70,49 @@ export const HomeView: React.FC<HomeViewProps> = ({
     .join('')
     .toUpperCase();
 
-  const toggleSave = (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setSavedItems((prev) => ({ ...prev, [id]: !prev[id] }));
-  };
+  const nextEvent = events[0];
+  const nextEventDate = nextEvent
+    ? new Intl.DateTimeFormat(dateLocale, { weekday: 'short', day: 'numeric', month: 'short' }).format(new Date(nextEvent.startsAt))
+    : '';
+  const formatClock = (value: string) =>
+    new Intl.DateTimeFormat(dateLocale, { hour: '2-digit', minute: '2-digit' }).format(new Date(value));
 
   return (
     <div className="min-h-[calc(100vh-8rem)] flex flex-col pb-28 max-w-md mx-auto space-y-5 px-4 pt-3">
-      {/* Top Header Row: "Kgotso" greeting eyebrow + member name + clean bell */}
-      <div className="pt-2 pb-1 flex items-start justify-between">
-        <div>
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 mb-0.5">
-            <Sun className="w-3.5 h-3.5 text-[#3F76C5]" />
-            <span>{t('home.kgotso')}</span>
+      {/* Top Header Row: photo avatar + greeting + clean bell */}
+      <div className="pt-2 pb-1 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="relative shrink-0">
+            <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-slate-200 shadow-xs bg-[#0A2A52]">
+              {member.photo && !photoFailed ? (
+                <img
+                  src={member.photo}
+                  alt={member.name}
+                  className="w-full h-full object-cover"
+                  onError={() => setPhotoFailed(true)}
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-white font-black text-sm tracking-wide">
+                  {initials || <UserRound className="w-5 h-5" />}
+                </div>
+              )}
+            </div>
+            {!member.isPending && (
+              <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-emerald-500 ring-2 ring-white" />
+            )}
           </div>
-          <h1 className="text-2xl font-black text-[#0A2A52] tracking-tight">
-            {member.title} {member.name}
-          </h1>
-          <p className="text-xs text-[#3F76C5] font-semibold mt-0.5">
-            {member.branch}
-          </p>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 mb-0.5">
+              <Sun className="w-3.5 h-3.5 text-[#3F76C5]" />
+              <span>{t('home.kgotso')}</span>
+            </div>
+            <h1 className="text-xl font-black text-[#0A2A52] tracking-tight truncate">
+              {member.title} {member.name}
+            </h1>
+            <p className="text-xs text-[#3F76C5] font-semibold mt-0.5 truncate">
+              {member.branch}
+            </p>
+          </div>
         </div>
 
         <button
@@ -83,7 +123,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
           aria-label={t('notifications.viewAria')}
         >
           <Bell className="w-5 h-5 text-[#0A2A52] stroke-[2]" />
-          {announcements.some((n) => !n.isRead) && (
+          {hasUnseenNotices && (
             <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[#D13138] ring-2 ring-white" />
           )}
         </button>
@@ -99,12 +139,10 @@ export const HomeView: React.FC<HomeViewProps> = ({
             : 'bg-gradient-to-br from-[#0A2A52] via-[#164A86] to-[#1D4ED8] shadow-[0_12px_28px_rgba(10,42,82,0.28)] border-blue-300/25'
         }`}
       >
-        {/* Soft atmospheric gradient accents */}
         <div className="absolute -right-8 -bottom-8 w-44 h-44 rounded-full bg-white/10 blur-2xl pointer-events-none" />
         <div className="absolute left-1/4 -top-8 w-32 h-32 rounded-full bg-white/5 blur-xl pointer-events-none" />
 
         <div className="relative z-10 flex items-center justify-between gap-3">
-          {/* Left Column: Digital ID Typography */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 mb-0.5">
               <span className="text-[10px] font-bold uppercase tracking-widest text-blue-200/90">
@@ -124,7 +162,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
             </p>
           </div>
 
-          {/* Right Column: Circular Framed Avatar */}
           <div className="shrink-0 relative">
             <div className="w-15 h-15 rounded-full overflow-hidden border-2 border-white/70 shadow-md relative group-hover:scale-105 transition duration-200 bg-white/20">
               {member.photo && !photoFailed ? (
@@ -157,85 +194,123 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </div>
       </div>
 
-      {/* Quick Actions (Formerly Popular Services): Long horizontal cards like reference image */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between px-0.5">
+      {/* Upcoming events — same tinted card design as the security gate duty */}
+      <section>
+        <div className="flex items-center justify-between px-0.5 mb-3">
           <h3 className="text-base font-extrabold text-[#181D20] tracking-tight">
-            {t('home.quickActions')}
+            {t('home.upcomingEvents')}
           </h3>
           <button
-            onClick={() => onNavigateTab('calendar')}
+            onClick={onOpenEvents}
             className="text-xs font-semibold text-slate-400 hover:text-slate-900 transition"
           >
             {t('common.seeAll')}
           </button>
         </div>
 
-        {/* Stacked Full-Width Long Cards with Icon Top Left */}
+        {events.length ? (
+          <div className="grid grid-cols-2 gap-3">
+            {events.slice(0, 4).map((event, index) => {
+              const tint = CARD_TINTS[index % CARD_TINTS.length];
+              return (
+                <button
+                  key={event.id}
+                  type="button"
+                  onClick={onOpenEvents}
+                  className={`flex flex-col rounded-[24px] p-4 text-left transition active:scale-[0.97] ${tint.bg}`}
+                >
+                  <span className={`text-[9px] font-extrabold uppercase tracking-[0.14em] ${tint.icon}`}>
+                    {event.category}
+                  </span>
+                  <h4 className="mt-1.5 text-sm font-black leading-snug text-[#0A2A52] line-clamp-2">
+                    {event.title}
+                  </h4>
+                  <div className="mt-3 space-y-1.5 text-[11px] font-semibold text-slate-600">
+                    <p className="flex items-center gap-1.5">
+                      <Clock3 className={`h-3.5 w-3.5 shrink-0 ${tint.icon}`} />
+                      {formatClock(event.startsAt)}
+                    </p>
+                    <p className="flex items-center gap-1.5">
+                      <MapPin className={`h-3.5 w-3.5 shrink-0 ${tint.icon}`} />
+                      <span className="truncate">{event.location}</span>
+                    </p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={onOpenEvents}
+            className="w-full rounded-[24px] border border-dashed border-slate-300 bg-white/70 px-5 py-6 text-center transition active:scale-[0.99]"
+          >
+            <p className="text-xs font-extrabold text-slate-600">
+              {eventsFailed ? t('common.errorGeneric') : t('home.noEvents')}
+            </p>
+            <p className="mt-1 text-[11px] font-medium text-slate-400">{t('home.events')}</p>
+          </button>
+        )}
+      </section>
+
+      {/* Quick Actions: long image cards */}
+      <div className="space-y-3">
+        <h3 className="text-base font-extrabold text-[#181D20] tracking-tight px-0.5">
+          {t('home.quickActions')}
+        </h3>
+
         <div className="space-y-3">
-          {/* Card 1: Upcoming Ceremony */}
-          {upcomingCeremony && (
-            <div
-              id="home-card-upcoming-ceremony"
-              onClick={() => onOpenCeremonyRegistration(upcomingCeremony)}
-              className="relative rounded-[22px] overflow-hidden shadow-md border border-slate-200/60 h-[115px] p-4 flex flex-col justify-between group cursor-pointer active:scale-[0.99] transition duration-150"
-              style={{
-                backgroundImage: `url('/silo.jpg')`,
-                backgroundSize: 'cover',
-                backgroundPosition: 'center',
-              }}
-            >
-              {/* Dark Overlay Gradient */}
-              <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/75 to-slate-950/40 group-hover:from-slate-950/95 transition duration-200" />
-
-              {/* Top Row: Icon Top-Left + Action Arrow Top-Right */}
-              <div className="relative z-10 flex items-center justify-between">
-                <Sun className="w-5 h-5 text-white stroke-[2.2]" />
-                <div className="w-7 h-7 rounded-full bg-white/10 group-hover:bg-white/20 backdrop-blur-md flex items-center justify-center text-white shrink-0 transition">
-                  <ArrowUpRight className="w-4 h-4 stroke-[2.5]" />
-                </div>
-              </div>
-
-              {/* Bottom Row: Title in Church Language + Plain Date Subtitle */}
-              <div className="relative z-10 min-w-0">
-                <h4 className="text-sm font-black text-white leading-tight truncate">
-                  {upcomingCeremony.title || 'Mokete wa Paseka'}
-                </h4>
-                <p className="text-xs text-slate-300 font-medium mt-0.5 truncate">
-                  {upcomingCeremony.startDate ? `${upcomingCeremony.startDate} · ${t('home.tapToRegister')}` : `12 April · ${t('home.tapToRegister')}`}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Card 2: Give */}
+          {/* Card 1: Events → calendar */}
           <div
-            id="home-card-giving"
-            onClick={() => onOpenPayments('karolo')}
+            id="home-card-events"
+            onClick={onOpenEvents}
             className="relative rounded-[22px] overflow-hidden shadow-md border border-slate-200/60 h-[115px] p-4 flex flex-col justify-between group cursor-pointer active:scale-[0.99] transition duration-150"
             style={{
-              backgroundImage: `url('/give.jpg')`,
+              backgroundImage: `url('/silo.jpg')`,
               backgroundSize: 'cover',
               backgroundPosition: 'center',
             }}
           >
             <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/75 to-slate-950/40 group-hover:from-slate-950/95 transition duration-200" />
 
-            {/* Top Row: Icon Top-Left + Action Arrow Top-Right */}
             <div className="relative z-10 flex items-center justify-between">
-              <BookOpen className="w-5 h-5 text-white stroke-[2.2]" />
+              <Sun className="w-5 h-5 text-white stroke-[2.2]" />
+              <div className="w-7 h-7 rounded-full bg-white/10 group-hover:bg-white/20 backdrop-blur-md flex items-center justify-center text-white shrink-0 transition">
+                <ArrowUpRight className="w-4 h-4 stroke-[2.5]" />
+              </div>
+            </div>
+
+            <div className="relative z-10 min-w-0">
+              <h4 className="text-sm font-black text-white leading-tight truncate">
+                {nextEvent?.title ?? t('home.events')}
+              </h4>
+              <p className="text-xs text-slate-300 font-medium mt-0.5 truncate">
+                {nextEvent ? `${nextEventDate} · ${nextEvent.location}` : t('home.events')}
+              </p>
+            </div>
+          </div>
+
+          {/* Card 2: Attendance history (replaces the retired Give card) */}
+          <div
+            id="home-card-attendance"
+            onClick={onOpenAttendance}
+            className="relative rounded-[22px] overflow-hidden shadow-md border border-slate-200/60 h-[115px] p-4 flex flex-col justify-between group cursor-pointer active:scale-[0.99] transition duration-150 bg-gradient-to-br from-[#0A2A52] via-[#164A86] to-[#1D4ED8]"
+          >
+            <div className="absolute -right-8 -top-8 w-36 h-36 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+
+            <div className="relative z-10 flex items-center justify-between">
+              <Clock3 className="w-5 h-5 text-white stroke-[2.2]" />
               <div className="w-7 h-7 rounded-full bg-white/10 group-hover:bg-white/20 backdrop-blur-md flex items-center justify-center text-white shrink-0 transition">
                 <ArrowRight className="w-4 h-4 stroke-[2.5]" />
               </div>
             </div>
 
-            {/* Bottom Row: Clear Title & Subtitle */}
             <div className="relative z-10 min-w-0">
               <h4 className="text-sm font-black text-white leading-tight truncate">
-                {t('home.give')}
+                {t('profile.hubAttendance')}
               </h4>
-              <p className="text-xs text-slate-300 font-medium mt-0.5 truncate">
-                {t('home.giveSub')}
+              <p className="text-xs text-blue-100 font-medium mt-0.5 truncate">
+                {t('profile.hubAttendanceSub')}
               </p>
             </div>
           </div>
@@ -253,7 +328,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
           >
             <div className="absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/75 to-slate-950/40 group-hover:from-slate-950/95 transition duration-200" />
 
-            {/* Top Row: Icon Top-Left + Action Arrow Top-Right */}
             <div className="relative z-10 flex items-center justify-between">
               <QrCode className="w-5 h-5 text-white stroke-[2.2]" />
               <div className="w-7 h-7 rounded-full bg-white/10 group-hover:bg-white/20 backdrop-blur-md flex items-center justify-center text-white shrink-0 transition">
@@ -261,7 +335,6 @@ export const HomeView: React.FC<HomeViewProps> = ({
               </div>
             </div>
 
-            {/* Bottom Row: Broad Title & Subtitle */}
             <div className="relative z-10 min-w-0">
               <h4 className="text-sm font-black text-white leading-tight truncate">
                 {t('media.titleCard')}
@@ -274,9 +347,9 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </div>
       </div>
 
-      {/* Daily Spiritual Thought & Scripture Reading (Clean, serene styling) */}
+      {/* Daily Spiritual Thought */}
       <div className="bg-white rounded-[24px] p-5 border border-[#3F76C5]/15 shadow-sm">
-      <div className="flex items-center gap-2 text-[#0A2A52] mb-2">
+        <div className="flex items-center gap-2 text-[#0A2A52] mb-2">
           <BookOpen className="w-4 h-4 stroke-[2.2]" />
           <span className="text-[11px] font-black uppercase tracking-wider">
             {t('home.dailyReflection')}

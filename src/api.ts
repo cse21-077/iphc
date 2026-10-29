@@ -56,6 +56,27 @@ export interface SecurityCheckIn {
   checkedInAt: string;
 }
 
+export interface MemberEvent {
+  id: string;
+  title: string;
+  category: string;
+  description: string;
+  location: string;
+  imagePath: string | null;
+  startsAt: string;
+  endsAt: string | null;
+  branch: string | null;
+}
+
+export interface ChurchNotice {
+  id: string;
+  title: string;
+  body: string;
+  date: string; // ISO timestamp
+  scope: string;
+  priority: string;
+}
+
 export interface MemberAttendance {
   attendanceId: string;
   eventName: string;
@@ -113,6 +134,10 @@ export const getCurrentUser = () => request<AuthResponse>('/api/auth/me');
 export const getRegistrationOptions = () => request<RegistrationOptions>('/api/auth/options');
 
 export const getSecurityEvents = () => request<SecurityEvent[]>('/api/security/events');
+
+export const getEvents = () => request<MemberEvent[]>('/api/events');
+
+export const getNotices = () => request<ChurchNotice[]>('/api/notices');
 
 export const recordSecurityCheckIn = (eventId: string, membershipNumber: string) =>
   request<SecurityCheckIn>('/api/security/attendance', {
