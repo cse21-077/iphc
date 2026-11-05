@@ -473,8 +473,16 @@ app.post('/api/attendance/self', requireUser, async (request, response, next) =>
 // ---------------------------------------------------------------------------
 app.get('/api/events', async (_request, response, next) => {
   try {
+    const now = new Date();
     const events = await prisma.events.findMany({
-      where: { is_published: true, archived_at: null },
+      where: {
+        is_published: true,
+        archived_at: null,
+        OR: [
+          { ends_at: { gte: now } },
+          { ends_at: null, starts_at: { gte: new Date(now.getTime() - 24 * 60 * 60 * 1000) } },
+        ],
+      },
       include: { branches: true },
       orderBy: { starts_at: 'asc' },
       take: 100,
@@ -537,7 +545,14 @@ app.get('/api/security/events', requireUser, requireSecurity, async (_request, r
   try {
     const now = new Date();
     const events = await prisma.events.findMany({
-      where: { is_published: true, archived_at: null, ends_at: { gte: now } },
+      where: {
+        is_published: true,
+        archived_at: null,
+        OR: [
+          { ends_at: { gte: now } },
+          { ends_at: null, starts_at: { gte: new Date(now.getTime() - 24 * 60 * 60 * 1000) } },
+        ],
+      },
       include: { branches: true },
       orderBy: { starts_at: 'asc' },
       take: 50,
