@@ -132,7 +132,7 @@ export const SECTION_BREAKDOWN: SectionStat[] = [
   { section: 'Difate', count: Math.round(TOTAL_MEMBERS * 0.21) },
   { section: 'Bo Ntate', count: Math.round(TOTAL_MEMBERS * 0.17) },
   { section: 'Badisa', count: Math.round(TOTAL_MEMBERS * 0.14) },
-  { section: 'Ayobaness', count: Math.round(TOTAL_MEMBERS * 0.11) },
+  { section: 'Teen', count: Math.round(TOTAL_MEMBERS * 0.11) },
   { section: 'BaPriest', count: Math.round(TOTAL_MEMBERS * 0.08) },
   { section: 'EXCO', count: Math.round(TOTAL_MEMBERS * 0.05) },
 ];
@@ -155,7 +155,7 @@ export const RECENT_REGISTRATIONS: RegistrationRow[] = [
   { id: 'reg_002', name: 'Ntate Samuel Kgwedi', branch: 'Tembisa', region: 'Johannesburg', section: 'Bo Ntate', date: '2026-09-02', status: 'New' },
   { id: 'reg_003', name: 'Mme Naledi Tshehla', branch: 'Thohoyandou', region: 'Limpopo 4', section: 'Badisa', date: '2026-09-01', status: 'Pending' },
   { id: 'reg_004', name: 'Ntate Piet Motaung', branch: 'Bethlehem', region: 'Vaalfreestate', section: 'Difate', date: '2026-09-01', status: 'Verified' },
-  { id: 'reg_005', name: 'Mme Lerato Dlamini', branch: 'Kwamhlanga', region: 'Mpumalanga 2', section: 'Ayobaness', date: '2026-08-31', status: 'Verified' },
+  { id: 'reg_005', name: 'Mme Lerato Dlamini', branch: 'Kwamhlanga', region: 'Mpumalanga 2', section: 'Teen', date: '2026-08-31', status: 'Verified' },
   { id: 'reg_006', name: 'Ntate Oupa Chiloane', branch: 'Bushbuckridge', region: 'Mpumalanga 1', section: 'BaPriest', date: '2026-08-31', status: 'New' },
   { id: 'reg_007', name: 'Mme Refilwe Mashaba', branch: 'Tzaneen', region: 'Limpopo 5', section: 'Dinaledi', date: '2026-08-30', status: 'Verified' },
   { id: 'reg_008', name: 'Ntate Victor Sebola', branch: 'Mokerong', region: 'Limpopo 3', section: 'Bo Ntate', date: '2026-08-30', status: 'Pending' },

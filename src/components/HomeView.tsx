@@ -25,10 +25,9 @@ interface HomeViewProps {
   onOpenMembershipPass: () => void;
 }
 
-const CARD_TINTS = [
-  { bg: 'bg-[#EAF1FB]', icon: 'text-[#3F76C5]' },
-  { bg: 'bg-[#FFF3D1]', icon: 'text-[#B98600]' },
-  { bg: 'bg-[#FBE7E8]', icon: 'text-[#D13138]' },
+const EVENT_CARD_STYLES = [
+  'bg-[#3F76C5] hover:bg-[#3465AA]',
+  'bg-[#D13138] hover:bg-[#B9272D]',
 ];
 
 export const HomeView: React.FC<HomeViewProps> = ({
@@ -194,7 +193,7 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </div>
       </div>
 
-      {/* Upcoming events — same tinted card design as the security gate duty */}
+      {/* Upcoming events — alternate solid blue and red cards */}
       <section>
         <div className="flex items-center justify-between px-0.5 mb-3">
           <h3 className="text-base font-extrabold text-[#181D20] tracking-tight">
@@ -211,27 +210,27 @@ export const HomeView: React.FC<HomeViewProps> = ({
         {events.length ? (
           <div className="grid grid-cols-2 gap-3">
             {events.slice(0, 4).map((event, index) => {
-              const tint = CARD_TINTS[index % CARD_TINTS.length];
+              const cardStyle = EVENT_CARD_STYLES[index % EVENT_CARD_STYLES.length];
               return (
                 <button
                   key={event.id}
                   type="button"
                   onClick={onOpenEvents}
-                  className={`flex flex-col rounded-[24px] p-4 text-left transition active:scale-[0.97] ${tint.bg}`}
+                  className={`flex flex-col rounded-[24px] p-4 text-left text-white transition active:scale-[0.97] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#0A2A52] focus-visible:ring-offset-2 ${cardStyle}`}
                 >
-                  <span className={`text-[9px] font-extrabold uppercase tracking-[0.14em] ${tint.icon}`}>
+                  <span className="text-[9px] font-extrabold uppercase tracking-[0.14em] text-white/90">
                     {event.category}
                   </span>
-                  <h4 className="mt-1.5 text-sm font-black leading-snug text-[#0A2A52] line-clamp-2">
+                  <h4 className="mt-1.5 text-sm font-black leading-snug text-white line-clamp-2">
                     {event.title}
                   </h4>
-                  <div className="mt-3 space-y-1.5 text-[11px] font-semibold text-slate-600">
+                  <div className="mt-3 space-y-1.5 text-[11px] font-semibold text-white/90">
                     <p className="flex items-center gap-1.5">
-                      <Clock3 className={`h-3.5 w-3.5 shrink-0 ${tint.icon}`} />
+                      <Clock3 className="h-3.5 w-3.5 shrink-0 text-white" />
                       {formatClock(event.startsAt)}
                     </p>
                     <p className="flex items-center gap-1.5">
-                      <MapPin className={`h-3.5 w-3.5 shrink-0 ${tint.icon}`} />
+                      <MapPin className="h-3.5 w-3.5 shrink-0 text-white" />
                       <span className="truncate">{event.location}</span>
                     </p>
                   </div>

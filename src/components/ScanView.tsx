@@ -5,14 +5,12 @@ import {
   CheckCircle2,
   QrCode,
   MapPin,
-  Clock,
   ArrowLeft,
   UserCheck,
 } from 'lucide-react';
-import confetti from 'canvas-confetti';
 import { MemberProfile, AttendanceRecord } from '../types';
 import { QRCodeDisplay } from './QRCodeDisplay';
-import { EVENT_QR_PREFIX, MemberAttendance, recordMemberCheckIn } from '../api';
+import { ApiError, EVENT_QR_PREFIX, MemberAttendance, recordMemberCheckIn } from '../api';
 import { useTranslation } from '../data/i18n';
 
 interface ScanViewProps {
@@ -21,6 +19,19 @@ interface ScanViewProps {
   onBackToHome: () => void;
   onViewHistory: () => void;
 }
+
+const makeAttendanceRecord = (attendance: MemberAttendance): AttendanceRecord => {
+  const checkedInAt = new Date(attendance.checkedInAt);
+  return {
+    id: attendance.attendanceId,
+    date: checkedInAt.toISOString().slice(0, 10),
+    time: checkedInAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    serviceName: attendance.eventName,
+    branch: `${attendance.branch} · ${attendance.location}`,
+    method: attendance.method,
+    verificationCode: `ATT-${attendance.attendanceId.slice(0, 8).toUpperCase()}`,
+  };
+};
 
 export const ScanView: React.FC<ScanViewProps> = ({
   member,
@@ -37,19 +48,6 @@ export const ScanView: React.FC<ScanViewProps> = ({
   const [successRecord, setSuccessRecord] = useState<AttendanceRecord | null>(null);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
-  const makeAttendanceRecord = (attendance: MemberAttendance): AttendanceRecord => {
-    const checkedInAt = new Date(attendance.checkedInAt);
-    return {
-      id: attendance.attendanceId,
-      date: checkedInAt.toISOString().slice(0, 10),
-      time: checkedInAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      serviceName: attendance.eventName,
-      branch: `${attendance.branch} · ${attendance.location}`,
-      method: attendance.method,
-      verificationCode: `ATT-${attendance.attendanceId.slice(0, 8).toUpperCase()}`,
-    };
-  };
-
   const handleScannedCode = useCallback(async (value: string) => {
     setScanError('');
     if (!value.startsWith(EVENT_QR_PREFIX)) {
@@ -64,18 +62,19 @@ export const ScanView: React.FC<ScanViewProps> = ({
       const record = makeAttendanceRecord(attendance);
       setSuccessRecord(record);
       onRecordAttendance(record);
-      confetti({
-        particleCount: 75,
-        spread: 70,
-        origin: { y: 0.6 },
-        colors: ['#3F76C5', '#D13138', '#10B981', '#F59E0B'],
-      });
     } catch (error) {
-      setScanError(error instanceof Error ? error.message : t('common.errorGeneric'));
+      const apiError = error as ApiError;
+      if (apiError.code === 'EVENT_NOT_ARRIVED') {
+        setScanError(t('scan.eventNotArrived'));
+      } else if (apiError.code === 'EVENT_PASSED') {
+        setScanError(t('scan.eventPassed'));
+      } else {
+        setScanError(error instanceof Error ? error.message : t('common.errorGeneric'));
+      }
     } finally {
       setIsScanning(false);
     }
-  }, [onRecordAttendance]);
+  }, [onRecordAttendance, t]);
 
   useEffect(() => {
     if (!cameraActive || scanMode !== 'self_camera' || member.isPending) return;
@@ -288,51 +287,24 @@ export const ScanView: React.FC<ScanViewProps> = ({
         </div>
       )}
 
-      {/* UNMISTAKABLE CONFIRMATION STATE (Per PRD Section 3.2 & Design Principle 3) */}
       {successRecord && (
-        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center animate-in zoom-in-95 duration-200">
-          <div className="w-full max-w-sm bg-white rounded-3xl p-7 shadow-2xl border-2 border-emerald-500/30">
-            {/* Big Unmistakable Success Icon */}
-            <CheckCircle2 className="w-16 h-16 text-emerald-600 mx-auto mb-3 stroke-[2.2]" />
+        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+          <div className="w-full max-w-sm p-6">
+            <CheckCircle2 className="w-14 h-14 text-slate-800 mx-auto mb-4 stroke-[1.7]" />
 
-            <h3 className="text-2xl font-black text-slate-900 tracking-tight leading-tight">
+            <h3 className="text-2xl font-bold text-slate-900 tracking-tight leading-tight">
               {t('scan.success')}
             </h3>
-            <p className="text-sm font-semibold text-emerald-700 mt-1">
-              {successRecord.serviceName}
+            <p className="text-sm text-slate-600 mt-2">
+              {t('scan.successSub', { event: successRecord.serviceName })}
             </p>
 
-            {/* Attendance Confirmation Details Box */}
-            <div className="mt-5 p-4 rounded-2xl bg-slate-50 border border-slate-200 text-left space-y-2.5 text-xs text-slate-700">
-              <div className="flex items-center justify-between">
-                <span className="text-slate-500 flex items-center gap-1">
-                  <Clock className="w-3.5 h-3.5 text-slate-400" />
-                  <span>{t('scan.timeRecorded')}</span>
-                </span>
-                <span className="font-bold text-slate-900">{successRecord.time}</span>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <span className="text-slate-500 flex items-center gap-1">
-                  <MapPin className="w-3.5 h-3.5 text-slate-400" />
-                  <span>{t('calendar.location')}</span>
-                </span>
-                <span className="font-bold text-slate-900 truncate max-w-[170px] text-right">
-                  {successRecord.branch}
-                </span>
-              </div>
-
-              {successRecord.seatNumber && (
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-500">{t('scan.seatGate')}</span>
-                  <span className="font-semibold text-[#3F76C5]">{successRecord.seatNumber}</span>
-                </div>
-              )}
-
-              <div className="pt-2 border-t border-slate-200 flex items-center justify-between font-mono text-[11px]">
-                <span className="text-slate-400">{t('attendance.verificationCode')}</span>
-                <span className="font-bold text-slate-600">{successRecord.verificationCode}</span>
-              </div>
+            <div className="mt-5 space-y-1 text-xs text-slate-500">
+              <p>{t('scan.timeRecorded')}: {successRecord.time}</p>
+              <p className="flex items-center justify-center gap-1">
+                <MapPin className="w-3.5 h-3.5" />
+                <span>{successRecord.branch}</span>
+              </p>
             </div>
 
             {/* Primary Action: Done or Back to Home */}

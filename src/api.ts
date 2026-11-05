@@ -86,6 +86,11 @@ export interface MemberAttendance {
   checkedInAt: string;
 }
 
+export interface ApiError extends Error {
+  status?: number;
+  code?: string;
+}
+
 export const EVENT_QR_PREFIX = 'IPHC-EVENT:';
 
 export interface AdminUser {
@@ -107,8 +112,9 @@ const request = async <T>(path: string, init: RequestInit = {}): Promise<T> => {
     });
     if (!response.ok) {
       const body = await response.json().catch(() => null);
-      const error = new Error(body?.error ?? `Request failed (${response.status}).`) as Error & { status?: number };
+      const error = new Error(body?.error ?? `Request failed (${response.status}).`) as ApiError;
       error.status = response.status;
+      error.code = body?.code;
       throw error;
     }
     return response.status === 204 ? (undefined as T) : response.json();

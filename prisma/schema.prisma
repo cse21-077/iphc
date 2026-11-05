@@ -1,9 +1,6 @@
-// AFTER
 generator client {
-  provider      = "prisma-client-js"
-  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+  provider = "prisma-client-js"
 }
-
 
 datasource db {
   provider  = "postgresql"
@@ -19,23 +16,10 @@ model app_users {
   is_active     Boolean        @default(true)
   created_at    DateTime       @default(now()) @db.Timestamptz(6)
   updated_at    DateTime       @db.Timestamptz(6)
-  audit_log             audit_log[]
-  branch_admins         branch_admins?
-  members               members?
-  password_reset_tokens password_reset_tokens[]
-  user_roles            user_roles[]
-}
-
-model password_reset_tokens {
-  id         String    @id @db.Uuid
-  user_id    String    @db.Uuid
-  token_hash String    @unique
-  expires_at DateTime  @db.Timestamptz(6)
-  used_at    DateTime? @db.Timestamptz(6)
-  created_at DateTime  @default(now()) @db.Timestamptz(6)
-  app_users  app_users @relation(fields: [user_id], references: [id], onDelete: Cascade)
-
-  @@index([user_id])
+  audit_log     audit_log[]
+  branch_admins branch_admins?
+  members       members?
+  user_roles    user_roles[]
 }
 
 model attendance {
@@ -100,7 +84,6 @@ model branches {
   branch_membership_counters branch_membership_counters?
   events                     events[]
   members                    members[]
-  notices                    notices[]
 }
 
 model events {
@@ -122,21 +105,6 @@ model events {
   branches     branches?    @relation(fields: [branch_id], references: [id])
 
   @@index([starts_at, is_published])
-}
-
-model notices {
-  id           String    @id @db.Uuid
-  title        String
-  body         String    @default("")
-  scope        String    @default("Church-wide")
-  priority     String    @default("normal")
-  branch_id    String?   @db.Uuid
-  published_at DateTime  @default(now()) @db.Timestamptz(6)
-  created_by   String?   @db.Uuid
-  created_at   DateTime  @default(now()) @db.Timestamptz(6)
-  branches     branches? @relation(fields: [branch_id], references: [id])
-
-  @@index([published_at(sort: Desc)])
 }
 
 model member_relationships {
@@ -213,7 +181,6 @@ enum AppRole {
   MEMBER
   BRANCH_ADMIN
   MASTER_ADMIN
-  SECURITY
 }
 
 enum AuditAction {
