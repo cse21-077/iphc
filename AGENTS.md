@@ -37,3 +37,18 @@ Guidance for AI agents and developers working in this repository. Read this befo
 - Active locales are English, Sesotho (`st`) and Setswana (`tn`). To add one: create `locales/<code>.ts` (`DeepPartial<Translation>`), then add it to `LOCALES` and `dictionaries` in `src/data/i18n/index.ts`. Never translate brand/church terms (IPHC, MMUSO, Kgotso, Karolo, Silo, FLG).
 - The picker lives in ProfileView's "Preferences" card. The choice persists to localStorage (`iphc-locale`) only — nothing server-side.
 - The security gate portal (`SecurityPortal.tsx`) uses the dedicated `security.*` namespace; its redesign uses the app palette (navy `#0A2A52`, blue `#3F76C5`, red `#D13138`, yellow accents) with a floating pill bottom nav.
+
+## API route inventory (do not drop)
+
+`server/index.ts` must always expose every route the frontend calls (`src/api.ts` is the contract). A rewrite once dropped these and every screen showed generic errors:
+
+- `GET /api/health`
+- `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me`, `POST /api/auth/logout`
+- `POST /api/auth/forgot-password`, `POST /api/auth/reset-password` (Resend + `password_reset_tokens`)
+- `GET /api/admin/users`, `POST /api/admin/users`
+- `GET|POST /api/admin/events`, `POST /api/admin/events/:id/publish`, `POST /api/admin/events/:id/archive`
+- `GET /api/events`, `GET /api/notices` (member-facing)
+- `GET /api/attendance/me`, `POST /api/attendance/self`
+- `GET /api/security/events`, `POST /api/security/attendance`
+
+The Prisma schema must keep the `password_reset_tokens` and `notices` models (tables already exist in the DB via migrations) and the `SECURITY` value in `AppRole` — dropping any of these breaks login for gate staff or the reset flow with enum/decoding errors.
