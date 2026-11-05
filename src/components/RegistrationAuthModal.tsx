@@ -19,13 +19,17 @@ import {
   Plus,
   Trash2,
   ChevronDown,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 
 interface RegistrationAuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onLogin: (phone: string, password: string) => Promise<void>;
+  onLogin: (email: string, password: string) => Promise<void>;
   onRegisterComplete: (registration: RegistrationPayload) => Promise<void>;
+  onRequestPasswordReset?: (email: string) => Promise<void>;
+  onResetPassword?: (token: string, password: string) => Promise<void>;
 }
 
 interface CountryDial {
@@ -106,8 +110,9 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
   const [familyMembers, setFamilyMembers] = useState<Array<{ name: string; relation: string }>>([]);
 
   // Direct login state
-  const [loginPhoneInput, setLoginPhoneInput] = useState('');
+  const [loginEmailInput, setLoginEmailInput] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [loginError, setLoginError] = useState('');
   const [formError, setFormError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -166,7 +171,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
     try {
       await onRegisterComplete({
         phone: phone || fullPhone,
-        email: email.trim() || undefined,
+        email: email.trim(),
         password,
         title: titlePrefix,
         fullName: fullName.trim(),
@@ -199,7 +204,7 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
     setLoginError('');
     setIsSubmitting(true);
     try {
-      await onLogin(loginPhoneInput.trim(), loginPassword);
+      await onLogin(loginEmailInput.trim(), loginPassword);
       onClose();
     } catch (error) {
       setLoginError(error instanceof Error ? error.message : 'Unable to sign in.');
@@ -874,32 +879,44 @@ export const RegistrationAuthModal: React.FC<RegistrationAuthModalProps> = ({
             <div>
               <h2 className="text-xl font-black text-[#0A2A52]">Log In to IPHC</h2>
               <p className="text-xs text-slate-500 mt-1">
-                Enter registered phone number to switch accounts.
+                Sign in with the email address linked to your account.
               </p>
             </div>
 
             <form onSubmit={handleDirectLoginSubmit} className="space-y-4 pt-1">
               <div>
-                <label className={labelClass}>Registered Phone Number *</label>
+                <label className={labelClass}>Email Address *</label>
                 <input
-                  type="tel"
+                  type="email"
                   required
-                  value={loginPhoneInput}
-                  onChange={(e) => setLoginPhoneInput(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-mono font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-[#3F76C5]"
+                  autoComplete="email"
+                  value={loginEmailInput}
+                  onChange={(e) => setLoginEmailInput(e.target.value)}
+                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-[#3F76C5]"
                 />
               </div>
 
               <div>
                 <label className={labelClass}>Password *</label>
-                <input
-                  type="password"
-                  required
-                  autoComplete="current-password"
-                  value={loginPassword}
-                  onChange={(e) => setLoginPassword(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-[#3F76C5]"
-                />
+                <div className="relative">
+                  <input
+                    type={showLoginPassword ? 'text' : 'password'}
+                    required
+                    autoComplete="current-password"
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    className="w-full px-4 py-3 pr-12 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-[#3F76C5]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowLoginPassword((visible) => !visible)}
+                    className="absolute inset-y-0 right-3 flex items-center text-slate-500 hover:text-slate-800"
+                    aria-label={showLoginPassword ? 'Hide password' : 'Show password'}
+                    aria-pressed={showLoginPassword}
+                  >
+                    {showLoginPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
               </div>
 
               {loginError && (

@@ -263,15 +263,16 @@ const requireAdmin = (request: Request, response: Response, next: NextFunction) 
   return next();
 };
 
-const signIn = (phone: string, password: string) => supabaseRequest<SupabaseSession>('/auth/v1/token?grant_type=password', {
-  method: 'POST', body: { phone, password },
-});
+const signIn = (identifier: { phone: string } | { email: string }, password: string) =>
+  supabaseRequest<SupabaseSession>('/auth/v1/token?grant_type=password', {
+    method: 'POST', body: { ...identifier, password },
+  });
 
 app.post('/api/auth/register', async (request, response, next) => {
   try {
     const { authUser } = await createAccount(request.body as RegistrationInput);
     const phone = normalizePhone(String(request.body?.phone ?? ''));
-    const session = await signIn(phone, String(request.body?.password ?? ''));
+    const session = await signIn({ phone }, String(request.body?.password ?? ''));
     setSessionCookies(response, session);
     const profile = await profileForAuthUser(authUser);
     return response.status(201).json({ member: memberDto(profile), role: responseRole(profile?.roles ?? []) });
@@ -282,8 +283,25 @@ app.post('/api/auth/register', async (request, response, next) => {
 
 app.post('/api/auth/login', async (request, response, next) => {
   try {
-    const phone = normalizePhone(String(request.body?.phone ?? ''));
-    const session = await signIn(phone, String(request.body?.password ?? ''));
+    const email = typeof request.body?.email === 'string' ? request.body.email.trim().toLowerCase() : '';
+    const submittedPhone = typeof request.body?.phone === 'string' ? normalizePhone(request.body.phone) : '';
+    let identifier: { phone: string } | { email: string } | null = null;
+    if (email.includes('@')) {
+      const appUser = await prisma.app_users.findUnique({
+        where: { email },
+        include: { members: true },
+      });
+      const phone = normalizePhone(appUser?.members?.phone ?? '');
+      identifier = phone ? { phone } : { email };
+    } else {
+      const phone = normalizePhone(email) || submittedPhone;
+      if (/^\+?[0-9]{7,15}$/.test(phone)) identifier = { phone };
+    }
+    if (!identifier) {
+      return response.status(400).json({ error: 'Enter a valid email address or phone number.' });
+    }
+
+    const session = await signIn(identifier, String(request.body?.password ?? ''));
     const profile = await profileForAuthUser(session.user);
     if (!profile) return response.status(403).json({ error: 'No active member profile is linked to this account.' });
     setSessionCookies(response, session);
