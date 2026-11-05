@@ -4,7 +4,11 @@ import { randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { AppRole, MaritalStatus, MemberStatus, PrismaClient } from '@prisma/client';
-import { normalizePhone } from './security';
+// NOTE: keep this module free of relative imports from other files in server/ —
+// Vercel's serverless packaging does not emit sibling files, which crashed the
+// whole API with ERR_MODULE_NOT_FOUND ('./security'). server/security.ts stays
+// for standalone scripts only.
+const normalizePhone = (phone: string) => phone.replace(/[\s().-]/g, '');
 
 const prisma = new PrismaClient();
 const app = express();

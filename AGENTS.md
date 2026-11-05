@@ -21,6 +21,8 @@ Guidance for AI agents and developers working in this repository. Read this befo
 
 5. The frontend API client (`src/api.ts`) retries a 404/503 once on safe requests (reads + login) to absorb the brief post-deploy propagation window. Keep that behavior.
 
+6. **`server/index.ts` must stay self-contained — no relative imports from other files in `server/`.** Vercel's serverless packaging does not emit sibling files into the function bundle; `import ... from './security'` crashed the entire API at cold start (`ERR_MODULE_NOT_FOUND`), 500ing every route. Inline small helpers instead (`server/security.ts` is kept for standalone scripts like `scripts/bootstrap-admin.ts`). Use explicit `.js` extensions if a relative import is ever unavoidable.
+
 ## Working conventions
 
 - Run `npm run lint` (tsc) and `npm run build` after changes; both must pass.
